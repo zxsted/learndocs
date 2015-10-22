@@ -1,0 +1,178 @@
+ python的log使...
+
+    import logging
+    
+    logger = logging.getLogger()  # 生成一个日志对象
+
+    # logfile是一个全局变量，它就是一个文件名，如：'crawl.log'
+    logfile = 'test.log'
+
+
+    # 生成一个Handler。logging支持许多Handler，
+    # 象FileHandler, SocketHandler, SMTPHandler等，我由于要写
+    # 文件就使用了FileHandler。   
+    hdlr = logging.FileHandler('sendlog.txt')
+
+
+    # 成一个格式器，用于规范日志的输出格式。如果没有这行代码，那么缺省的
+    # 格式就是："%(message)s"。也就是写日志时，信息是什么日志中就是什么，
+    # 没有日期，没有信息级别等信息。logging支持许多种替换值，详细请看
+    # Formatter的文档说明。这里有三项：时间，信息级别，日志信息
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+
+
+    # 将格式器设置到处理器上
+    hdlr.setFormatter(formatter)
+
+
+    # 将处理器加到日志对象上
+    logger.addHandler(hdlr)
+
+
+    # 设置日志信息输出的级别。logging提供多种级别的日志信息，如：NOTSET,
+    # DEBUG, INFO, WARNING, ERROR, CRITICAL等。每个级别都对应一个数值。
+    # 如果不执行此句，缺省为30(WARNING)。可以执行：logging.getLevelName
+    # (logger.getEffectiveLevel())来查看缺省的日志级别。日志对象对于不同
+    # 的级别信息提供不同的函数进行输出，如：info(), error(), debug()等。当
+    # 写入日志时，小于指定级别的信息将被忽略。因此为了输出想要的日志级别一定
+    # 要设置好此参数。这里我设为NOTSET（值为0），也就是想输出所有信息
+    logger.setLevel(logging.NOTSET)
+
+ 
+
+实际运用中，我们可能需要将日志的配置信息独立出来，这时候我们就需要用到logging的另一个功能：
+
+test.py
+
+# test.py
+import logging
+import logging.config
+
+logging.config.fileConfig("logging.conf")
+
+#create logger
+logger = logging.getLogger("example")
+
+#"application" code
+logger.debug("debug message")
+logger.info("info message")
+logger.warn("warn message")
+logger.error("error message")
+logger.critical("critical message")
+
+logHello = logging.getLogger("hello")
+logHello.info("Hello world!")
+
+ 
+
+
+logging.conf配置文件：
+
+# logging.conf
+
+[loggers]
+keys=root,example
+
+[handlers]
+keys=consoleHandler,rotateFileHandler
+
+[formatters]
+keys=simpleFormatter
+
+[formatter_simpleFormatter]
+format=[%(asctime)s](%(levelname)s)%(name)s : %(message)s
+
+[logger_root]
+level=DEBUG
+handlers=consoleHandler,rotateFileHandler
+
+[logger_example]
+level=DEBUG
+handlers=consoleHandler,rotateFileHandler
+qualname=example
+propagate=0
+
+[handler_consoleHandler]
+class=StreamHandler
+level=DEBUG
+formatter=simpleFormatter
+args=(sys.stdout,)
+
+[handler_rotateFileHandler]
+class=handlers.RotatingFileHandler
+level=DEBUG
+formatter=simpleFormatter
+args=('test.log', 'a', 200000, 9)
+
+
+
+
+
+python启用日志功能
+2011年11月26日 飞尘
+4,621次阅读 跳到评论	
+
+在python中一般情况下可以使用print进行简单调试，随着项目的不断演进，日志的需求就越发重要了。
+
+下面先给出一个最简单的日志输出形式：
+
+    import logging
+    logging.warning(‘Oh, my log.’) 
+
+因为默认情况下python定义日志输出级别是warning以上的，所以如果这里用debug的话会看不到日志输出。
+
+当然我们可以使用basicConfig进行设置，修改日志的输出级别
+
+    logging.basicConfig(level=logging.DEBUG) 
+
+个人更喜欢使用配置文件来设置
+?View Code PYTHON
+
+import logging
+import logging.config
+ 
+logging.config.fileConfig("logger.conf")
+
+使用上面的配置文件后，发现python执行脚本没有问题，但是在使用webpy配置apache的情况下报错：
+
+    NoSectionError: No section: ‘formatters’ 
+
+需要这样来加载配置文件
+?View Code PYTHON
+
+import logging
+import logging.config
+import os
+ 
+logging.config.fileConfig(os.path.abspath(os.path.dirname(__file__)) + "/logger.conf")
+
+相应的配置文件logger.conf如下
+?View Code TXT
+
+#logger.conf
+###############################################
+[loggers]
+keys=root
+[logger_root]
+level=DEBUG
+handlers=hand
+###############################################
+[handlers]
+keys=console,file
+[handler_console]
+class=StreamHandler
+level=DEBUG
+formatter=form
+args=(sys.stdout,)
+[handler_file]
+class=FileHandler
+level=DEBUG
+formatter=form
+args=('python.log', 'a')
+###############################################
+[formatters]
+keys=form
+[formatter_form]
+format=%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s
+datefmt=%Y-%m-%d %H:%M:%S
+

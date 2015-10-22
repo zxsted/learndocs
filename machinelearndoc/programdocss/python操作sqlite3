@@ -1,0 +1,194 @@
+
+python操作sqlite3
+分类： python 2013-07-16 09:48 465人阅读 评论(0) 收藏 举报
+
+目录(?)[+]
+python操作sqlite3
+分类： Python2013-07-15 12:42 87人阅读 评论(0) 收藏 举报
+
+最近用python操作sqlite3，写了点代码，留下备用。
+
+
+[python] view plaincopy
+
+    #!/usr/bin/env python  
+    # -*- coding: UTF-8 -*-  
+      
+    import os  
+    import sys  
+    import codecs  
+    import sqlite3  
+      
+    #set default encoding as UTF-8  
+    reload(sys)  
+    sys.setdefaultencoding('utf-8')  
+      
+    #connect_database  
+    #if db exists,connect it  
+    #else create db file  
+    def connect_db(db_name):  
+        conn = sqlite3.connect(db_name)  
+        return conn  
+      
+    #close connect   
+    def close_db(conn):  
+        conn.close()  
+      
+      
+    #insert values into table  
+    def insert_values(conn,table_name):  
+          
+        cu = conn.cursor()  
+        try:  
+            cu.execute("insert into %s values (\'%s\',\'%d\')" %(table_name,'xxx',12))  
+        except sqlite3.Error,e:  
+            print 'insert value failed:',e.args[0]  
+            return  
+        conn.commit()  
+      
+      
+    #query values from table  
+    def query_values(conn,table_name):  
+        cu = conn.cursor()  
+      
+        try:  
+            cu.execute('select * from %s' %table_name)  
+        except sqlite3.Error,e:  
+            print 'query data failed:',e.args[0]  
+            return  
+        return cu.fetchall()  
+      
+      
+    #create table  
+    def create_table(conn,table_name):  
+        cu = conn.cursor()  
+        try:  
+            cu.execute('create table %s (Name,Age integer) ' %table_name)  
+        except sqlite3.Error,e:  
+            print 'create table failed:',e.args[0]  
+            return  
+        conn.commit()  
+      
+    #drop table if exist  
+    def drop_table(conn,table_name):  
+        cu = conn.cursor()  
+          
+        try:  
+            cu.execute('drop table if exists %s' %table_name)  
+        except suqlit3.Error,e:  
+            print 'drop table failed:',e.args[0]  
+            return  
+        conn.commit()  
+      
+    #main function  
+    if __name__ == '__main__':  
+        db_name = './Per.db'  
+        conn = connect_db(db_name)  
+      
+        table_name = 'per'  
+        drop_table(conn,table_name)  
+        create_table(conn,table_name)  
+      
+          
+        close_db(conn)  
+
+
+
+
+1. 数据库连接对象 
+
+conn是一个数据库的连接对象，它可以有以下操作： 
+
+         commit()--事务提交 
+         rollback()--事务回滚 
+         close()--关闭一个数据库连接 
+         cursor()--创建一个游标 
+
+2. 游标对象 
+
+所有sql语句的执行都要在游标对象下进行。 
+
+cu = conn.cursor()#这样定义了一个游标。
+
+游标对象有以下的操作： 
+
+        execute()--执行sql语句 
+        executemany--执行多条sql语句 
+        close()--关闭游标 
+        fetchone()--从结果中取一条记录 
+        fetchmany()--从结果中取多条记录 
+        fetchall()--从结果中取出多条记录 
+        scroll()--游标滚动
+Python读写Excel
+分类： Python2012-10-30 19:16 271人阅读 评论(2) 收藏 举报
+
+xlrd包读写excel，xlrd更偏向于读取excel表格中数据，试验中用xlrd读取是没问题的，但是写数据没有成功，因此有使用了xlwt包来写入excel，下面介绍xlrd和xlwt包的使用方法。
+
+
+一、xlrd使用介绍
+
+xlrd安装在windows有可执行exe文件，可直接下载安装，http://www.lexicon.net/sjmachin/xlrd.htm
+
+  1、导入模块
+
+      import xlrd
+
+   2、打开Excel文件读取数据
+
+       data = xlrd.open_workbook('excelFile.xls')
+
+   3、使用技巧
+
+        获取一个工作表 
+        table = data.sheets()[0]          #通过索引顺序获取
+ 
+        table = data.sheet_by_index(0) #通过索引顺序获取 
+        table = data.sheet_by_name(u'Sheet1')#通过名称获取
+ 
+        获取整行和整列的值（数组）
+ 　　
+         table.row_values(i) 
+         table.col_values(i)
+ 
+        获取行数和列数
+　　
+        nrows = table.nrows 
+        ncols = table.ncols
+       
+        循环行列表数据
+        for i in range(nrows ):
+      print table.row_values(i)
+ 
+单元格
+cell_A1 = table.cell(0,0).value 
+cell_C4 = table.cell(2,3).value
+ 
+使用行列索引
+cell_A1 = table.row(0)[0].value 
+cell_A2 = table.col(1)[0].value
+ 
+简单的写入
+row = 0 
+col = 0
+ 
+# 类型 0 empty,1 string, 2 number, 3 date, 4 boolean, 5 error
+ctype = 1 value = '单元格的值' 
+xf = 0 # 扩展的格式化 
+table.put_cell(row, col, ctype, value, xf) 
+table.cell(0,0)  #单元格的值' 
+table.cell(0,0).value #单元格的值'
+
+BTW：写数据都是这么介绍的，但是我没有写入成功，没找到具体问题。
+
+二、xlwt使用方法
+xlwt可现在源码，然后运行命令：python setup.py install 来安装http://pypi.python.org/pypi/xlwt，网址是基于python2.x版本的xlwt包，还有基于python3.x版本的xlwt3，请注意版本，否则会出错。
+
+基本用法很简单：
+import xlwt
+wb = xlwt.Workbook()
+ws = wb.add_sheet('A Test Sheet')
+
+ws.write(2, 0, 1)
+ws.write(2, 1, 1)
+
+wb.save('example.xls')

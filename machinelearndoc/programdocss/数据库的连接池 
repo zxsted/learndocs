@@ -1,0 +1,625 @@
+ 数据库的连接池  http://blog.csdn.net/pi9nc/article/details/17057023
+分类： python 移动互联网 设计模式 2013-12-01 18:45 75人阅读 评论(0) 收藏 举报
+> 猎头职位: 上海: Senior Software Engineer
+相关文章:  
+
+    学完线程,摸索着写了个线程池,有待完善
+    Python实现线程池
+    python类学习
+
+
+推荐群组: Python 
+更多相关推荐
+Python
+
+在Python中如果对象定义了__del__方法的话，在对象的引用记数为0时会自动调用__del__方法（很象c++中的析构函数），但如果A对象引用B对象，B对象又引用A对象，就形成循环引用，此时A，B对象引用次数都为1。python就无法正常调用__del__方法，原计划在__del__方法里释放的资源自然也就无法释放。
+
+一个连接池拥有多个连接，而每个连接又拥有这个连接池的实例(一个叫pool的属性)。这样就产生了刚刚说的哪个问题。我想到的办法就是在每次从池中获取连接的时候将连接的pool设置为当前实例，然后在归还这个连接的时候再将其设置为None，并且要在这个连接对象的__del__方法中将pool属性设置为None。具体看代码吧。（目前只实现了SQLite3的）
+Python代码  收藏代码
+
+    ''''' 
+    Created on 2009-4-17 
+     
+    @author: phyeas 
+    '''  
+    import time  
+    from queue import Queue  
+      
+    class PoolException(Exception):  
+        pass  
+      
+    class Pool(object):  
+        '''''一个数据库连接池'''  
+        def __init__(self, maxActive=5, maxWait=None, init_size=0, db_type="SQLite3", **config):  
+            self.__freeConns = Queue(maxActive)  
+            self.maxWait = maxWait  
+            self.db_type = db_type  
+            self.config = config  
+            if init_size > maxActive:  
+                init_size = maxActive  
+            for i in range(init_size):  
+                self.free(self._create_conn())  
+          
+        def __del__(self):  
+            print("__del__ Pool..")  
+            self.release()  
+          
+        def release(self):  
+            '''''释放资源，关闭池中的所有连接'''  
+            print("release Pool..")  
+            while self.__freeConns and not self.__freeConns.empty():  
+                con = self.get()  
+                con.release()  
+            self.__freeConns = None  
+      
+        def _create_conn(self):  
+            '''''创建连接 '''  
+            if self.db_type in dbcs:  
+                return dbcs[self.db_type](**self.config);  
+              
+        def get(self, timeout=None):  
+            '''''获取一个连接 
+            @param timeout:超时时间 
+            '''  
+            if timeout is None:  
+                timeout = self.maxWait  
+            conn = None  
+            if self.__freeConns.empty():#如果容器是空的，直接创建一个连接  
+                conn = self._create_conn()  
+            else:  
+                conn = self.__freeConns.get(timeout=timeout)  
+            conn.pool = self  
+            return conn  
+          
+        def free(self, conn):  
+            '''''将一个连接放回池中 
+            @param conn: 连接对象 
+            '''  
+            conn.pool = None  
+            if(self.__freeConns.full()):#如果当前连接池已满，直接关闭连接  
+                conn.release()  
+                return  
+            self.__freeConns.put_nowait(conn)  
+              
+    from abc import ABCMeta, abstractmethod  
+      
+    class PoolingConnection(object, metaclass=ABCMeta):  
+        def __init__(self, **config):  
+            self.conn = None  
+            self.config = config  
+            self.pool = None  
+              
+        def __del__(self):  
+            self.release()  
+              
+        def __enter__(self):  
+            pass  
+          
+        def __exit__(self, exc_type, exc_value, traceback):  
+            self.close()  
+              
+        def release(self):  
+            print("release PoolingConnection..")  
+            if(self.conn is not None):  
+                self.conn.close()  
+                self.conn = None  
+            self.pool = None  
+                  
+        def close(self):  
+            if self.pool is None:  
+                raise PoolException("连接已关闭")  
+            self.pool.free(self)  
+              
+        def __getattr__(self, val):  
+            if self.conn is None and self.pool is not None:  
+                self.conn = self._create_conn(**self.config)  
+            if self.conn is None:  
+                raise PoolException("无法创建数据库连接 或连接已关闭")  
+            return getattr(self.conn, val)  
+     
+        @abstractmethod  
+        def _create_conn(self, **config):  
+            pass  
+      
+    class SQLit3PoolConnection(PoolingConnection):  
+        def _create_conn(self, **config):  
+            import sqlite3  
+            return sqlite3.connect(**config)  
+      
+    dbcs = {"SQLite3":SQLit3PoolConnection}  
+      
+    pool = Pool(database="F:\\test\\a")  
+      
+    def test():  
+        conn = pool.get()  
+        with conn:  
+            for a in conn.execute("SELECT * FROM A"):  
+                print(a)  
+      
+    if __name__ == "__main__":  
+        test()  
+
+ java:自定义数据库连接池
+2013-03-20 23:16:38
+标签：数据库 连接池 java pool
+原创作品，允许转载，转载时请务必以超链接形式标明文章 原始出处 、作者信息和本声明。否则将追究法律责任。http://idata.blog.51cto.com/4581576/1159243
+
+连接池是非常好的想法，应用很普遍。自己写一个数据库连接池，并不像想象中那样困难。一般系统对连接池的功能不会有太多要求，使用自己的连接池未必是个坏主意。下面以Oracle为例，但是对Teradata和Greenplum也是可行的。另外我还实现了连接有效性检查（checkConn）和恢复连接(resetConn)的方法。本例编程采用的是JRE1.4.2环境（别忘了准备访问数据库的jar包）。有任何问题请随时留言，欢迎探讨。
+
+在Oracle内创建测试数据：
+
+    drop table my_table;  
+    create table my_table(  
+           field_id varchar2(3),  
+           field_content varchar2(60),  
+           record_create_date date default sysdate  
+    );  
+     
+    insert into my_table(field_id,field_content) values('001','this is first record');  
+    insert into my_table(field_id,field_content) values('002','this is second record');  
+    insert into my_table(field_id,field_content) values('003','this is third record');  
+    commit;  
+
+DBPool.java：
+
+    package dataWebService;  
+     
+    import java.sql.DriverManager;  
+    import java.util.Date;  
+    import java.sql.Connection;  
+    import java.sql.SQLException;  
+    import java.sql.Statement;  
+     
+    public class DBPool{  
+        private String cls;  
+        private String url;  
+        private String usr;  
+        private String pss;   
+        private int connCount = 3;//连接数  
+        private Connection[] connections;//保存数据库连接  
+        private String[] connStatus;// 已连可用Y   已连不可用N   未连接X  
+        private Date[] lastQueryTime;//时间戳  
+          
+        public DBPool(DBPoolConfiguration poolConfiguration){  
+            this.connCount=poolConfiguration.getConnCount();  
+            this.cls=poolConfiguration.getCls();  
+            this.url=poolConfiguration.getUrl();  
+            this.usr=poolConfiguration.getUsr();  
+            this.pss=poolConfiguration.getPss();  
+            this.connections=new Connection[this.connCount];  
+            this.connStatus=new String[this.connCount];  
+            for(int i=0;i<this.connCount;i++){  
+                this.connStatus[i]="X";//初始化全部未连接  
+            }  
+            this.lastQueryTime = new Date[this.connCount];        
+        }  
+          
+        public DBPool(String cls,String url,String usr,String pss){  
+            this.cls=cls;  
+            this.url=url;  
+            this.usr=usr;  
+            this.pss=pss;  
+            this.connections=new Connection[this.connCount];  
+            this.connStatus=new String[this.connCount];  
+            for(int i=0;i<this.connCount;i++){  
+                this.connStatus[i]="X";//初始化全部未连接  
+            }  
+            this.lastQueryTime = new Date[this.connCount];  
+        }  
+     
+        public void initPool(){  
+            if(connCount<1){  
+                System.out.println("请正确设置连接池窗口个数");  
+            }else{  
+                try{  
+                    Class.forName(this.cls);//register class  
+                }catch(ClassNotFoundException e){  
+                    System.out.println(e.getMessage());  
+                }catch(Exception e){  
+                    System.out.println(e.getMessage());//other exceptions  
+                }  
+     
+                for(int i=0;i<this.connCount;i++){  
+                    try{  
+                        this.connections[i]=DriverManager.getConnection(this.url, this.usr, this.pss);  
+                        this.connStatus[i]="Y";  
+                    }catch(SQLException e){  
+                        System.out.println(e.getMessage());  
+                    }catch(Exception e){  
+                        System.out.println(e.getMessage());//other exceptions  
+                    }  
+                }     
+                System.out.println("initPool is ready...");  
+            }//end if  
+        }  
+     
+        public void freePool(){  
+            for(int i=0;i<this.connCount;i++){  
+                try{  
+                    this.connections[i].commit();  
+                    this.connections[i].close();  
+                    this.connStatus[i]="X";  
+                    this.lastQueryTime[i]=null;  
+                }catch(Exception e){  
+                    try{  
+                        this.connections[i].close();  
+                        this.connStatus[i]="X";  
+                        this.lastQueryTime[i]=null;                   
+                    }catch(Exception e1){  
+                        System.out.println(e1.getMessage());//just for catch  
+                    }  
+                }             
+            }  
+            System.out.println("freePool is over ...");  
+        }  
+     
+        public DBPoolConnection getPoolConn() throws DBPoolIsFullException{  
+            DBPoolConnection poolConnection = new DBPoolConnection();  
+            poolConnection.connNbr=getConnNbr();  
+            if(poolConnection.connNbr==-1){  
+                throw new DBPoolIsFullException("连接池已满");  
+            }else{  
+                poolConnection.conn=getConn(poolConnection.connNbr);  
+            }  
+            return poolConnection;  
+        }  
+     
+        public void freePoolConn(DBPoolConnection poolConnection){  
+            if(poolConnection==null){  
+                System.out.println("poolConnection==null，不需要释放");  
+            }else{  
+                freeConn(poolConnection.connNbr);  
+            }  
+        }  
+          
+        public void printPoolStatus(){  
+            for(int i=0;i<this.connStatus.length;i++){  
+                System.out.println("");  
+                System.out.print(this.connStatus[i].toString());  
+                if(this.lastQueryTime[i]==null){  
+                    System.out.print("-[null] ");  
+                }else{  
+                    System.out.print("-["+this.lastQueryTime[i].toString()+"] ");  
+                }  
+            }  
+            System.out.println("");  
+        }  
+          
+        public String getCls(){  
+            return this.cls;  
+        }  
+     
+        public String getUrl(){  
+            return this.url;  
+        }  
+     
+        public String getUsr(){  
+            return this.usr;  
+        }  
+     
+        int getConnNbr(){  
+            int iConn=-1;  
+            for(int i=0;i<this.connCount;i++){  
+                if(this.connStatus[i].equals("Y")){  
+                    this.lastQueryTime[i]=new Date();  
+                    this.connStatus[i]="N";  
+                    iConn=i;  
+                    break;  
+                }  
+            }  
+            return iConn;  
+        }  
+          
+        Connection getConn(int i){  
+            return this.connections[i];  
+        }  
+              
+        void closeConnForTest(DBPoolConnection poolConnection){  
+            try{  
+                this.connections[poolConnection.connNbr].close();  
+            }catch(SQLException e){  
+                System.out.println(e.getMessage());   
+            }  
+        }  
+              
+        boolean checkConn(DBPoolConnection poolConnection){  
+            Statement stmt=null;  
+            String checkMessage="";  
+            boolean checkResult=true;  
+              
+            //检查连接是否有效  
+            try{  
+                String sql = "select * from dual";  
+                stmt = this.connections[poolConnection.connNbr].createStatement();  
+                stmt.executeQuery(sql);//execute sql  
+                stmt.close();  
+                checkMessage = "checkConn:checkMessage:execute sql success";  
+                System.out.println(checkMessage);  
+            }catch(Exception e){  
+                checkMessage = e.getMessage();  
+                System.out.println(e.getMessage());//other exceptions  
+                if(checkMessage==null){  
+                    checkMessage="e.getMessage() is null";  
+                    System.out.println(checkMessage);  
+                }  
+                //采取激进重连的策略，尽量避免业务中断  
+                if (checkMessage.indexOf("ORA-00942")>=0){  
+                    checkResult=true;//不需要重连  
+                }else if(checkMessage.indexOf("does not exist")>=0){  
+                    checkResult=true;//不需要重连  
+                }else if(checkMessage.indexOf("Syntax error")>=0){  
+                    checkResult=true;//不需要重连  
+                }else{            
+                    checkResult=false;//需要重连  
+                }  
+            }  
+            return checkResult;  
+        }  
+          
+        boolean resetConn(DBPoolConnection poolConnection){  
+            boolean result=false;//默认不需要重建连接   
+              
+            if(poolConnection==null){  
+                System.out.println("poolConnection==null，不知道您想重设哪个连接");  
+            }else if(poolConnection.connNbr==-1){  
+                System.out.println("poolConnection.connNbr==-1，不知道您想重设哪个连接");  
+            }else{  
+                if(checkConn(poolConnection)==true){  
+                    System.out.println("连接有效，不需要重设");  
+                }else{  
+                    //重设连接  
+                    try{  
+                        Class.forName(this.cls);//register class  
+                    }catch(ClassNotFoundException e){  
+                        System.out.println(e.getMessage());  
+                    }catch(Exception e){  
+                        System.out.println(e.getMessage());//other exceptions  
+                    }  
+                    try{  
+                        this.connections[poolConnection.connNbr]=DriverManager.getConnection(this.url, this.usr, this.pss);  
+                        this.connStatus[poolConnection.connNbr]="Y";  
+                        System.out.println(poolConnection.connNbr+"连接已重建");  
+                        result = true;//告知调用者连接已重建  
+                    }catch(SQLException e){  
+                        System.out.println(e.getMessage());  
+                    }catch(Exception e){  
+                        System.out.println(e.getMessage());//other exceptions  
+                    }     
+                }  
+            }  
+            return result;  
+        }  
+              
+        void freeConn(int i){  
+            try{  
+                if(i==-1){  
+                    System.out.println("i=-1，不需要释放");  
+                }else{  
+                    this.connections[i].commit();  
+                }  
+            }catch(SQLException e){  
+                System.out.println(e.getMessage());  
+            }catch(Exception e){  
+                System.out.println(e.getMessage());//other exceptions  
+            }  
+            this.connStatus[i]="Y";  
+        }  
+    }  
+
+DBPoolConfiguration.java
+
+    package dataWebService;  
+     
+    public class DBPoolConfiguration {  
+        private String cls;  
+        private String url;  
+        private String usr;  
+        private String pss;   
+        private int connCount;//连接数   
+          
+        public String getCls() {  
+            return cls;  
+        }  
+        public void setCls(String cls) {  
+            this.cls = cls;  
+        }  
+        public String getUrl() {  
+            return url;  
+        }  
+        public void setUrl(String url) {  
+            this.url = url;  
+        }  
+        public String getUsr() {  
+            return usr;  
+        }  
+        public void setUsr(String usr) {  
+            this.usr = usr;  
+        }  
+        public String getPss() {  
+            return pss;  
+        }  
+        public void setPss(String pss) {  
+            this.pss = pss;  
+        }  
+        public int getConnCount() {  
+            return connCount;  
+        }  
+        public void setConnCount(int connCount) {  
+            this.connCount = connCount;  
+        }  
+    } 
+
+DBPoolConnection.java:
+
+    package dataWebService;  
+     
+    import java.sql.Connection;  
+     
+    public class DBPoolConnection{  
+        public int connNbr=-1;  
+        public Connection conn=null;  
+        DBPoolConnection(){  
+            this.connNbr=-1;  
+            this.conn = null;  
+        }  
+    } 
+
+DBPoolIsFullException.java
+
+    package dataWebService;  
+     
+    public class DBPoolIsFullException extends Exception{  
+        static final long serialVersionUID=1L;  
+        DBPoolIsFullException(String message){  
+            super(message);  
+        }  
+    } 
+
+Test.java
+
+    package myAction;  
+     
+    import dataWebService.DBPool;  
+    import dataWebService.DBPoolConnection;  
+    import dataWebService.DBPoolConfiguration;  
+    import java.sql.ResultSet;  
+    import java.sql.ResultSetMetaData;  
+    import java.sql.Statement;  
+     
+    public class Test {  
+        static String rpad(String str,int len){  
+            String s = str;  
+            if(s==null){  
+                s="";  
+            }  
+            while(s.getBytes().length<len){  
+                s += " ";  
+            }  
+            return s;  
+        }  
+          
+        public static void main(String[] args) {          
+            //初始化  
+            String cls ="",url="",usr="",pss="",sql="";  
+            Statement stmt=null;  
+            ResultSet rs=null;  
+            String gapStr="|";//分隔符  
+            int connCount=2;//最大连接数  
+     
+            //连接Oracle  配置  
+            cls = "oracle.jdbc.driver.OracleDriver";  
+            url = "jdbc:oracle:thin:@localhost:1521:myoradb";  
+            usr = "abc";  
+            pss = "123";  
+              
+            sql = "select t.field_id,t.field_content,to_char(t.record_create_date,'YYYYMMDD') day from my_table t";  
+     
+            DBPoolConfiguration poolConfiguration=new DBPoolConfiguration();  
+            poolConfiguration.setCls(cls);  
+            poolConfiguration.setUrl(url);  
+            poolConfiguration.setUsr(usr);  
+            poolConfiguration.setPss(pss);  
+            poolConfiguration.setConnCount(connCount);  
+              
+            DBPool myPool = new DBPool(poolConfiguration);  
+            myPool.initPool();  
+     
+              
+            System.out.println("");  
+            System.out.print("after init Pool");  
+            myPool.printPoolStatus();  
+            System.out.println("");  
+              
+            DBPoolConnection c1=null;  
+     
+            try{  
+                c1 = myPool.getPoolConn();  
+     
+                System.out.println("");  
+                System.out.print("after getPoolConn");  
+                myPool.printPoolStatus();  
+                System.out.println("");           
+                  
+                stmt = c1.conn.createStatement();  
+                rs = stmt.executeQuery(sql);  
+     
+                ResultSetMetaData md = rs.getMetaData();  
+                  
+                String recordHead = "";  
+                int colCount = md.getColumnCount();  
+                for(int i=1;i<=colCount;i++){  
+                    if(recordHead.equals("")){  
+                        recordHead += rpad(md.getColumnName(i),md.getColumnDisplaySize(i));  
+                    }else{  
+                        recordHead+= gapStr + rpad(md.getColumnName(i),md.getColumnDisplaySize(i));  
+                    }  
+                }  
+                System.out.println(recordHead);//打印表头  
+                  
+                while(rs.next()){  
+                    String tmp = "";  
+                    for(int i=1;i<=colCount;i++){  
+                        int colSize = md.getColumnDisplaySize(i)>md.getColumnName(i).length()?md.getColumnDisplaySize(i):md.getColumnName(i).length();  
+                        if(tmp.equals("")){  
+                            tmp += rpad(rs.getString(i),colSize);  
+                        }else{  
+                            tmp += gapStr + rpad(rs.getString(i),colSize);  
+                        }  
+                    }  
+                    System.out.println(tmp);//打印数据  
+                }  
+                  
+                stmt.close();//释放资源但是不关闭连接                        
+                myPool.freePoolConn(c1);  
+                  
+                System.out.println("");  
+                System.out.print("after freePoolConn");  
+                myPool.printPoolStatus();  
+                System.out.println("");           
+            }catch(Exception e){  
+                System.out.println(e.getMessage());  
+            }  
+     
+            myPool.freePool();  
+     
+        }//end of main  
+    } 
+
+下面是Test.java的执行结果：
+
+    initPool is ready...  
+     
+    after init Pool  
+    Y-[null]   
+    Y-[null]   
+     
+     
+    after getPoolConn  
+    N-[Wed Mar 20 14:46:31 GMT 2013]   
+    Y-[null]   
+     
+    FIELD_ID|FIELD_CONTENT                                               |DAY       
+    001     |this is first record                                        |20130320  
+    002     |this is second record                                       |20130320  
+    003     |this is third record                                        |20130320  
+     
+    after freePoolConn  
+    Y-[Wed Mar 20 14:46:31 GMT 2013]   
+    Y-[null]   
+     
+    freePool is over ... 
+
+ 感谢您的耐心读到此处，我相信接下去的文字会更有价值。
+
+保持连接池简单性的几个设计思想（不一定正确）：
+
+１）在系统中连接池不应作为一个独立的模块，最好是作为某模块的底层实现。这样可以将超时管理、请求队列、确保资源释放、数据分页（方言不可避免了）等功能剥离出去。
+
+２）固定连接数比动态连接数容易实现，简单的代码更易于维护。
+
+本例有待完善之处（供参考）：
+
+１）查询空闲连接要遍历数组，这样当池中的连接数很大时可能会有问题（具体没测过）
+
+２）可以添加连接池阻塞的功能，有时候后台数据库需要重启，或者想重建连接池以提供更多的并发连接数
+

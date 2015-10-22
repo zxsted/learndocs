@@ -1,0 +1,304 @@
+ [Python入门及进阶笔记]Python-魔术方法小结(方法运算符重载)
+分类： 05-Python入门及进阶 2012-10-29 23:10 5376人阅读 评论(0) 收藏 举报
+
+目录(?)[+]
+
+博客迁往：新地址 （点击直达）
+
+新博客使用markdown维护，线下有版本库，自己写的所以会定时更新同步，同时提供更好的导航和阅读体验
+
+csdn对markdown支持不好，所以旧版不会花时间进行同步修订，抱歉
+-----------------------------------------------
+
+魔术方法
+
+对定制及重载做了下梳理，还没消化完，后续补全
+基本定制
+
+说明
+
+C.__init__(self[, arg1, ...]) 构造器（带一些可选的参数）
+C.__new__(self[, arg1, ...]) 构造器（带一些可选的参数）；通常用在设置不变数据类型的子类
+C.__del__(self) 解构器
+C.__str__(self) 可打印的字符输出；内建str()及print 语句
+C.__repr__(self) 运行时的字符串输出；内建repr()  ‘‘  和 操作符
+C.__unicode__(self)b Unicode 字符串输出；内建unicode()
+C.__call__(self, *args) 表示可调用的实例
+C.__nonzero__(self) 为object 定义False 值；内建bool() （从2.2 版开始）
+C.__len__(self) “ ” 长度（可用于类）；内建len()
+
+示例
+
+class A():
+    def __init__(self):
+        print "call __init__"
+        self.a = 1
+
+    def __new__(self):
+        print "call __new__"
+
+    def __del__(self):
+        print "call __del__"
+
+    def __str__(self):
+        print "call __str__"
+        return "class A str"
+
+    def __repr__(self):
+        print "call __repr__"
+        return "class A repr"
+
+    def __unicode__(self):
+        print "call __unicode__"
+        return "class A unicode"
+
+    def __nozero__(self):
+        print "call __nozero__"
+        return 1
+
+    def __len__(self):
+        print "call __len__"
+        return 1
+    #定以后callable(instance) True
+    def __call__(self, *args):
+        print "call __call__"
+a = A()
+print a
+repr(a)
+unicode(a)
+print bool(a)
+print len(a)
+print callable(a)
+
+A.new和init区别
+
+class A(object):
+    def __init__(self):
+        print "call __init__"
+        self.value = 1
+
+    def __new__(cls):
+        print "call __new__"
+        return super(A, cls).__new__(cls)
+
+a = A()
+print a.value
+
+__new__：创建对象时调用，返回当前对象的一个实例,相当于java里面的构造器 一般是用于继承内置类的，返回值是一个对象
+
+使用：需要控制一个新实例的创建,一般情况下不会使用，除非需要子类化不可变类型例如str/int/unicode/tuple
+
+__init__：创建完对象后调用，对当前对象的实例的一些初始化，无返回值
+
+使用：需要控制一个实例的初始化
+
+可以这样理解，默认是创建（new），然后调用init(new的时候，self还不存在, init的时候self已经存在了)
+对象值比较
+
+说明
+
+C.__cmp__(self, obj) 对象比较；内建cmp()
+C.__lt__(self, obj) and 小于/小于或等于；对应<及<=操作符
+C.__le__(self,obj)
+C.__gt__(self, obj) and 大于/大于或等于；对应>及>=操作符
+C.__ge__(self,obj)
+C.__eq__(self, obj) and 等于/不等于；对应==,!=及<>操作符
+C.__ne__(self,obj)
+
+示例
+
+class A():
+    def __init__(self, value):
+        self.value = value
+
+    def __cmp__(self, obj):
+        print "call __cmp__"
+        return self.value - obj.value
+
+    def __lt__(self, obj):
+        print "call __lt__"
+        return self.value < obj.value
+
+    def __gt__(self, obj):
+        print "call __gt__"
+        return self.value > obj.value
+
+    def __eq__(self, obj):
+        print "call __eq__"
+        return self.value == obj.value
+
+a1 = A(1)
+a2 = A(2)
+print cmp(a1,a2)
+print a1 < a2
+print a1 > a2
+print a1 == a2
+
+属性操作
+
+说明：
+
+C.__getattr__(self, attr) 获取属性；内建getattr()；仅当属性没有找到时调用
+C.__setattr__(self, attr, val) 设置属性
+C.__delattr__(self, attr) 删除属性
+C.__getattribute__(self, attr) 获取属性；内建getattr()；总是被调用
+C.__get__(self, attr) （描述符）获取属性
+C.__set__(self, attr, val)  （描述符）设置属性
+C.__delete__(self, attr)  （描述符）删除属性
+
+示例
+
+class A():
+    def __init__(self):
+        self.value = 1
+    def __getattr__(self, name):
+        print "call __getattr__"
+        try:
+            return self.__dict__[name]
+        except:
+            return "not found"
+
+    def __setattr__(self, name, value):
+        print "call __setattr__"
+        self.__dict__[name] = value
+
+    def __delattr__(self, name):
+        print "call __delattr__"
+        del self.__dict__[name]
+
+    def __getattribute__(self, name):
+        print "call __getattribute__"
+        return self.__dict__[name]
+
+    def __get__(self, name):
+        pass
+    def __set__(self, name, value):
+        pass
+    def __del__(self):
+        pass
+
+a = A()
+print getattr(a, "value")
+print getattr(a, "name")
+del a.value
+
+A.get/getattr/getattribute区别
+
+object.getattr(self, name)
+
+当一般位置找不到attribute的时候，会调用getattr，返回一个值或AttributeError异常。
+
+object.getattribute(self, name)
+
+无条件被调用，通过实例访问属性。如果class中定义了__getattr__()，则__getattr__()不会被调用（除非显示调用或引发AttributeError异常）
+
+object.get(self, instance, owner)
+
+如果class定义了它，则这个class就可以称为descriptor。owner是所有者的类，instance是访问descriptor的实例，如果不是通过实例访问，而是通过类访问的话，instance则为None。（descriptor的实例自己访问自己是不会触发__get__，而会触发__call__，只有descriptor作为其它类的属性才有意义。）
+数值及二进制
+
+二元
+
+C.__*add__(self, obj) 加；+操作符
+C.__*sub__(self, obj) 减；-操作符
+C.__*mul__(self, obj) 乘；*操作符
+C.__*div__(self, obj) 除；/操作符
+C.__*truediv__(self, obj)  True 除；/操作符
+C.__*floordiv__(self, obj)  Floor 除；//操作符
+C.__*mod__(self, obj) 取模/取余；%操作符
+C.__*divmod__(self, obj) 除和取模；内建divmod()
+C.__*pow__(self, obj[, mod]) 乘幂；内建pow();**操作符
+C.__*lshift__(self, obj) 左移位；<<操作符
+
+二进制
+
+C.__*rshift__(self, obj) 右移；>>操作符
+C.__*and__(self, obj) 按位与；&操作符
+C.__*or__(self, obj) 按位或；|操作符
+C.__*xor__(self, obj) 按位与或；^操作符
+
+一元
+
+C.__neg__(self) 一元负
+C.__pos__(self) 一元正
+C.__abs__(self) 绝对值；内建abs()
+C.__invert__(self) 按位求反；~操作符
+
+数值转换
+
+C.__complex__(self, com) 转为complex(复数);内建complex()
+C.__int__(self) 转为int;内建int()
+C.__long__(self) 转为long；内建long()
+C.__float__(self) 转为float；内建float()
+
+其他
+
+C.__oct__(self) 八进制表示；内建oct()
+C.__hex__(self) 十六进制表示；内建hex()
+C.__coerce__(self, num) 压缩成同样的数值类型；内建coerce()
+C.__index__(self)g 在有必要时,压缩可选的数值类型为整型（比如：用于切片索引等等
+
+序列
+
+说明
+
+C.__len__(self) 序列中项的数目
+C.__getitem__(self, ind) 得到单个序列元素
+C.__setitem__(self, ind,val) 设置单个序列元素
+C.__delitem__(self, ind) 删除单个序列元素
+
+C.__getslice__(self, ind1,ind2) 得到序列片断
+C.__setslice__(self, i1, i2,val) 设置序列片断
+C.__delslice__(self, ind1,ind2) 删除序列片断
+C.__contains__(self, val) f 测试序列成员；内建in 关键字
+C.__*add__(self,obj) 串连；+操作符
+C.__*mul__(self,obj) 重复；*操作符
+C.__iter__(self)  创建迭代类；内建iter()
+
+示例
+
+class A():
+    def __init__(self):
+        print "call __init__"
+        self.value = [1,2,3,4,5,6]
+
+    def __len__(self):
+        print "call __len__"
+        return len(self.value)
+
+    def __getitem__(self, index):
+        print "call __getitem__"
+        return self.value[index]
+
+    def __setitem__(self, index, value):
+        print "call __setitem__"
+        self.value[index] = value
+
+    def __delitem__(self, index):
+        print "call __delitem__"
+        del self.value[index]
+
+a = A()
+print len(a)
+print a[2]
+a[2] = 99
+del a[2]
+
+映射
+
+C.__len__(self) mapping 中的项的数目
+C.__hash__(self) 散列(hash)函数值
+C.__getitem__(self,key) 得到给定键(key)的值
+C.__setitem__(self,key,val) 设置给定键(key)的值
+C.__delitem__(self,key) 删除给定键(key)的值
+C.__missing__(self,key) 给定键如果不存在字典中，则提供一个默认值
+
+The end!
+
+wklken
+
+Gighub: https://github.com/wklken
+
+Blog: http://wklken.sinaapp.com/
+
+2012-10-29

@@ -1,0 +1,1148 @@
+
+30个有关Python的小技巧  http://blog.jobbole.com/63320/
+
+2014/04/01 | 分类： Python, 开发 | 3 条评论 | 标签： Python
+分享到： 35
+
+本文由 伯乐在线 - Kevin Sun 翻译自 sahandsaba。未经许可，禁止转载！
+欢迎加入：技术翻译小组，或分享原创到伯乐头条。
+
+从我开始学习python的时候，我就开始自己总结一个python小技巧的集合。后来当我什么时候在Stack Overflow
+或者在某个开源软件里看到一段很酷代码的时候，我就很惊讶：原来还能这么做！，当时我会努力的自己尝试一下这段代码，直到我懂了它的整体思路以后，我就把这段代码加到我的集合里。这篇博客其实就是这个集合整理后一部分的公开亮相。如果你已经是个python大牛，那么基本上你应该知道这里面的大多数用法了，但我想你应该也能发现一些你不知道的新技巧。而如果你之前是一个c,c++,java的程序员，同时在学习python，或者干脆就是一个刚刚学习编程的新手，那么你应该会看到很多特别有用能让你感到惊奇的实用技巧，就像我当初一样。
+
+每一个技巧和语言用法都会在一个个实例中展示给大家，也不需要有其他的说明。我已经尽力把每个例子弄的通俗易懂，但是因为读者对python的熟悉程度不同，仍然可能难免有一些晦涩的地方。所以如果这些例子本身无法让你读懂，至少这个例子的标题在你后面去google搜索的时候会帮到你。
+
+整个集合大概是按照难易程度排序，简单常见的在前面，比较少见的在最后。
+
+1.1 拆箱
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+	
+>>> a, b, c = 1, 2, 3
+>>> a, b, c
+(1, 2, 3)
+>>> a, b, c = [1, 2, 3]
+>>> a, b, c
+(1, 2, 3)
+>>> a, b, c = (2 * i + 1 for i in range(3))
+>>> a, b, c
+(1, 3, 5)
+>>> a, (b, c), d = [1, (2, 3), 4]
+>>> a
+1
+>>> b
+2
+>>> c
+3
+>>> d
+4
+
+1.2 拆箱变量交换
+1
+2
+3
+4
+	
+>>> a, b = 1, 2
+>>> a, b = b, a
+>>> a, b
+(2, 1)
+
+1.3 扩展拆箱（只兼容python3）
+1
+2
+3
+4
+5
+6
+7
+	
+>>> a, *b, c = [1, 2, 3, 4, 5]
+>>> a
+1
+>>> b
+[2, 3, 4]
+>>> c
+5
+
+1.4 负数索引
+1
+2
+3
+4
+5
+	
+>>> a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+>>> a[-1]
+10
+>>> a[-3]
+8
+
+1.5 切割列表
+1
+2
+3
+	
+>>> a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+>>> a[2:8]
+[2, 3, 4, 5, 6, 7]
+
+1.6 负数索引切割列表
+1
+2
+3
+	
+>>> a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+>>> a[-4:-2]
+[7, 8]
+
+1.7指定步长切割列表
+1
+2
+3
+4
+5
+6
+7
+	
+>>> a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+>>> a[::2]
+[0, 2, 4, 6, 8, 10]
+>>> a[::3]
+[0, 3, 6, 9]
+>>> a[2:8:2]
+[2, 4, 6]
+
+1.8 负数步长切割列表
+1
+2
+3
+4
+5
+	
+>>> a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+>>> a[::-1]
+[10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+>>> a[::-2]
+[10, 8, 6, 4, 2, 0]
+
+1.9 列表切割赋值
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+	
+>>> a = [1, 2, 3, 4, 5]
+>>> a[2:3] = [0, 0]
+>>> a
+[1, 2, 0, 0, 4, 5]
+>>> a[1:1] = [8, 9]
+>>> a
+[1, 8, 9, 2, 0, 0, 4, 5]
+>>> a[1:-1] = []
+>>> a
+[1, 5]
+
+1.10 命名列表切割方式
+1
+2
+3
+4
+5
+6
+	
+>>> a = [0, 1, 2, 3, 4, 5]
+>>> LASTTHREE = slice(-3, None)
+>>> LASTTHREE
+slice(-3, None, None)
+>>> a[LASTTHREE]
+[3, 4, 5]
+
+1.11 列表以及迭代器的压缩和解压缩
+1
+2
+3
+4
+5
+6
+7
+	
+>>> a = [1, 2, 3]
+>>> b = ['a', 'b', 'c']
+>>> z = zip(a, b)
+>>> z
+[(1, 'a'), (2, 'b'), (3, 'c')]
+>>> zip(*z)
+[(1, 2, 3), ('a', 'b', 'c')]
+
+1.12 列表相邻元素压缩器
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+	
+>>> a = [1, 2, 3, 4, 5, 6]
+>>> zip(*([iter(a)] * 2))
+[(1, 2), (3, 4), (5, 6)]
+ 
+>>> group_adjacent = lambda a, k: zip(*([iter(a)] * k))
+>>> group_adjacent(a, 3)
+[(1, 2, 3), (4, 5, 6)]
+>>> group_adjacent(a, 2)
+[(1, 2), (3, 4), (5, 6)]
+>>> group_adjacent(a, 1)
+[(1,), (2,), (3,), (4,), (5,), (6,)]
+ 
+>>> zip(a[::2], a[1::2])
+[(1, 2), (3, 4), (5, 6)]
+ 
+>>> zip(a[::3], a[1::3], a[2::3])
+[(1, 2, 3), (4, 5, 6)]
+ 
+>>> group_adjacent = lambda a, k: zip(*(a[i::k] for i in range(k)))
+>>> group_adjacent(a, 3)
+[(1, 2, 3), (4, 5, 6)]
+>>> group_adjacent(a, 2)
+[(1, 2), (3, 4), (5, 6)]
+>>> group_adjacent(a, 1)
+[(1,), (2,), (3,), (4,), (5,), (6,)]
+
+1.13 在列表中用压缩器和迭代器滑动取值窗口
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+	
+>>> def n_grams(a, n):
+...     z = [iter(a[i:]) for i in range(n)]
+...     return zip(*z)
+...
+>>> a = [1, 2, 3, 4, 5, 6]
+>>> n_grams(a, 3)
+[(1, 2, 3), (2, 3, 4), (3, 4, 5), (4, 5, 6)]
+>>> n_grams(a, 2)
+[(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)]
+>>> n_grams(a, 4)
+[(1, 2, 3, 4), (2, 3, 4, 5), (3, 4, 5, 6)]
+
+1.14 用压缩器反转字典
+1
+2
+3
+4
+5
+6
+7
+8
+	
+>>> m = {'a': 1, 'b': 2, 'c': 3, 'd': 4}
+>>> m.items()
+[('a', 1), ('c', 3), ('b', 2), ('d', 4)]
+>>> zip(m.values(), m.keys())
+[(1, 'a'), (3, 'c'), (2, 'b'), (4, 'd')]
+>>> mi = dict(zip(m.values(), m.keys()))
+>>> mi
+{1: 'a', 2: 'b', 3: 'c', 4: 'd'}
+
+1.15 列表展开
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+	
+>>> a = [[1, 2], [3, 4], [5, 6]]
+>>> list(itertools.chain.from_iterable(a))
+[1, 2, 3, 4, 5, 6]
+ 
+>>> sum(a, [])
+[1, 2, 3, 4, 5, 6]
+ 
+>>> [x for l in a for x in l]
+[1, 2, 3, 4, 5, 6]
+ 
+>>> a = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+>>> [x for l1 in a for l2 in l1 for x in l2]
+[1, 2, 3, 4, 5, 6, 7, 8]
+ 
+>>> a = [1, 2, [3, 4], [[5, 6], [7, 8]]]
+>>> flatten = lambda x: [y for l in x for y in flatten(l)] if type(x) is list else [x]
+>>> flatten(a)
+[1, 2, 3, 4, 5, 6, 7, 8]
+
+1.16 生成器表达式
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+	
+>>> g = (x ** 2 for x in xrange(10))
+>>> next(g)
+0
+>>> next(g)
+1
+>>> next(g)
+4
+>>> next(g)
+9
+>>> sum(x ** 3 for x in xrange(10))
+2025
+>>> sum(x ** 3 for x in xrange(10) if x % 3 == 1)
+408
+
+1.17 字典推导
+1
+2
+3
+4
+5
+6
+7
+	
+>>> m = {x: x ** 2 for x in range(5)}
+>>> m
+{0: 0, 1: 1, 2: 4, 3: 9, 4: 16}
+ 
+>>> m = {x: 'A' + str(x) for x in range(10)}
+>>> m
+{0: 'A0', 1: 'A1', 2: 'A2', 3: 'A3', 4: 'A4', 5: 'A5', 6: 'A6', 7: 'A7', 8: 'A8', 9: 'A9'}
+
+1.18 用字典推导反转字典
+1
+2
+3
+4
+5
+	
+>>> m = {'a': 1, 'b': 2, 'c': 3, 'd': 4}
+>>> m
+{'d': 4, 'a': 1, 'b': 2, 'c': 3}
+>>> {v: k for k, v in m.items()}
+{1: 'a', 2: 'b', 3: 'c', 4: 'd'}
+
+1.19 命名元组
+1
+2
+3
+4
+5
+6
+7
+8
+	
+>>> Point = collections.namedtuple('Point', ['x', 'y'])
+>>> p = Point(x=1.0, y=2.0)
+>>> p
+Point(x=1.0, y=2.0)
+>>> p.x
+1.0
+>>> p.y
+2.0
+
+1.20 继承命名元组
+1
+2
+3
+4
+5
+6
+7
+8
+9
+	
+>>> class Point(collections.namedtuple('PointBase', ['x', 'y'])):
+...     __slots__ = ()
+...     def __add__(self, other):
+...             return Point(x=self.x + other.x, y=self.y + other.y)
+...
+>>> p = Point(x=1.0, y=2.0)
+>>> q = Point(x=2.0, y=3.0)
+>>> p + q
+Point(x=3.0, y=5.0)
+
+1.21 操作集合
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+	
+>>> A = {1, 2, 3, 3}
+>>> A
+set([1, 2, 3])
+>>> B = {3, 4, 5, 6, 7}
+>>> B
+set([3, 4, 5, 6, 7])
+>>> A | B
+set([1, 2, 3, 4, 5, 6, 7])
+>>> A & B
+set([3])
+>>> A - B
+set([1, 2])
+>>> B - A
+set([4, 5, 6, 7])
+>>> A ^ B
+set([1, 2, 4, 5, 6, 7])
+>>> (A ^ B) == ((A - B) | (B - A))
+True
+
+1.22 操作多重集合
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+	
+>>> A = collections.Counter([1, 2, 2])
+>>> B = collections.Counter([2, 2, 3])
+>>> A
+Counter({2: 2, 1: 1})
+>>> B
+Counter({2: 2, 3: 1})
+>>> A | B
+Counter({2: 2, 1: 1, 3: 1})
+>>> A & B
+Counter({2: 2})
+>>> A + B
+Counter({2: 4, 1: 1, 3: 1})
+>>> A - B
+Counter({1: 1})
+>>> B - A
+Counter({3: 1})
+
+1.23 统计在可迭代器中最常出现的元素
+1
+2
+3
+4
+5
+6
+7
+	
+>>> A = collections.Counter([1, 1, 2, 2, 3, 3, 3, 3, 4, 5, 6, 7])
+>>> A
+Counter({3: 4, 1: 2, 2: 2, 4: 1, 5: 1, 6: 1, 7: 1})
+>>> A.most_common(1)
+[(3, 4)]
+>>> A.most_common(3)
+[(3, 4), (1, 2), (2, 2)]
+
+1.24 两端都可操作的队列
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+	
+>>> Q = collections.deque()
+>>> Q.append(1)
+>>> Q.appendleft(2)
+>>> Q.extend([3, 4])
+>>> Q.extendleft([5, 6])
+>>> Q
+deque([6, 5, 2, 1, 3, 4])
+>>> Q.pop()
+4
+>>> Q.popleft()
+6
+>>> Q
+deque([5, 2, 1, 3])
+>>> Q.rotate(3)
+>>> Q
+deque([2, 1, 3, 5])
+>>> Q.rotate(-3)
+>>> Q
+deque([5, 2, 1, 3])
+
+1.25 有最大长度的双端队列
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+	
+>>> last_three = collections.deque(maxlen=3)
+>>> for i in xrange(10):
+...     last_three.append(i)
+...     print ', '.join(str(x) for x in last_three)
+...
+0
+0, 1
+0, 1, 2
+1, 2, 3
+2, 3, 4
+3, 4, 5
+4, 5, 6
+5, 6, 7
+6, 7, 8
+7, 8, 9
+
+1.26 可排序词典
+1
+2
+3
+4
+5
+6
+7
+8
+9
+	
+>>> m = dict((str(x), x) for x in range(10))
+>>> print ', '.join(m.keys())
+1, 0, 3, 2, 5, 4, 7, 6, 9, 8
+>>> m = collections.OrderedDict((str(x), x) for x in range(10))
+>>> print ', '.join(m.keys())
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+>>> m = collections.OrderedDict((str(x), x) for x in range(10, 0, -1))
+>>> print ', '.join(m.keys())
+10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+
+1.27 默认词典
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+	
+>>> m = dict()
+>>> m['a']
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+KeyError: 'a'
+>>>
+>>> m = collections.defaultdict(int)
+>>> m['a']
+0
+>>> m['b']
+0
+>>> m = collections.defaultdict(str)
+>>> m['a']
+''
+>>> m['b'] += 'a'
+>>> m['b']
+'a'
+>>> m = collections.defaultdict(lambda: '[default value]')
+>>> m['a']
+'[default value]'
+>>> m['b']
+'[default value]'
+
+1.28 默认字典的简单树状表达
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+	
+>>> import json
+>>> tree = lambda: collections.defaultdict(tree)
+>>> root = tree()
+>>> root['menu']['id'] = 'file'
+>>> root['menu']['value'] = 'File'
+>>> root['menu']['menuitems']['new']['value'] = 'New'
+>>> root['menu']['menuitems']['new']['onclick'] = 'new();'
+>>> root['menu']['menuitems']['open']['value'] = 'Open'
+>>> root['menu']['menuitems']['open']['onclick'] = 'open();'
+>>> root['menu']['menuitems']['close']['value'] = 'Close'
+>>> root['menu']['menuitems']['close']['onclick'] = 'close();'
+>>> print json.dumps(root, sort_keys=True, indent=4, separators=(',', ': '))
+{
+    "menu": {
+        "id": "file",
+        "menuitems": {
+            "close": {
+                "onclick": "close();",
+                "value": "Close"
+            },
+            "new": {
+                "onclick": "new();",
+                "value": "New"
+            },
+            "open": {
+                "onclick": "open();",
+                "value": "Open"
+            }
+        },
+        "value": "File"
+    }
+}
+
+1.29 对象到唯一计数的映射
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+	
+>>> import itertools, collections
+>>> value_to_numeric_map = collections.defaultdict(itertools.count().next)
+>>> value_to_numeric_map['a']
+0
+>>> value_to_numeric_map['b']
+1
+>>> value_to_numeric_map['c']
+2
+>>> value_to_numeric_map['a']
+0
+>>> value_to_numeric_map['b']
+1
+
+1.30 最大和最小的几个列表元素
+1
+2
+3
+4
+5
+	
+>>> a = [random.randint(0, 100) for __ in xrange(100)]
+>>> heapq.nsmallest(5, a)
+[3, 3, 5, 6, 8]
+>>> heapq.nlargest(5, a)
+[100, 100, 99, 98, 98]
+
+1.31 两个列表的笛卡尔积
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+	
+>>> for p in itertools.product([1, 2, 3], [4, 5]):
+(1, 4)
+(1, 5)
+(2, 4)
+(2, 5)
+(3, 4)
+(3, 5)
+>>> for p in itertools.product([0, 1], repeat=4):
+...     print ''.join(str(x) for x in p)
+...
+0000
+0001
+0010
+0011
+0100
+0101
+0110
+0111
+1000
+1001
+1010
+1011
+1100
+1101
+1110
+1111
+
+1.32 列表组合和列表元素替代组合
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+	
+>>> for c in itertools.combinations([1, 2, 3, 4, 5], 3):
+...     print ''.join(str(x) for x in c)
+...
+123
+124
+125
+134
+135
+145
+234
+235
+245
+345
+>>> for c in itertools.combinations_with_replacement([1, 2, 3], 2):
+...     print ''.join(str(x) for x in c)
+...
+11
+12
+13
+22
+23
+33
+
+1.33 列表元素排列组合
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+	
+>>> for p in itertools.permutations([1, 2, 3, 4]):
+...     print ''.join(str(x) for x in p)
+...
+1234
+1243
+1324
+1342
+1423
+1432
+2134
+2143
+2314
+2341
+2413
+2431
+3124
+3142
+3214
+3241
+3412
+3421
+4123
+4132
+4213
+4231
+4312
+4321
+
+1.34 可链接迭代器
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+	
+>>> a = [1, 2, 3, 4]
+>>> for p in itertools.chain(itertools.combinations(a, 2), itertools.combinations(a, 3)):
+...     print p
+...
+(1, 2)
+(1, 3)
+(1, 4)
+(2, 3)
+(2, 4)
+(3, 4)
+(1, 2, 3)
+(1, 2, 4)
+(1, 3, 4)
+(2, 3, 4)
+>>> for subset in itertools.chain.from_iterable(itertools.combinations(a, n) for n in range(len(a) + 1))
+...     print subset
+...
+()
+(1,)
+(2,)
+(3,)
+(4,)
+(1, 2)
+(1, 3)
+(1, 4)
+(2, 3)
+(2, 4)
+(3, 4)
+(1, 2, 3)
+(1, 2, 4)
+(1, 3, 4)
+(2, 3, 4)
+(1, 2, 3, 4)
+
+1.35 根据文件指定列类聚
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+	
+>>> import itertools
+>>> with open('contactlenses.csv', 'r') as infile:
+...     data = [line.strip().split(',') for line in infile]
+...
+>>> data = data[1:]
+>>> def print_data(rows):
+...     print '\n'.join('\t'.join('{: <16}'.format(s) for s in row) for row in rows)
+...
+ 
+>>> print_data(data)
+young               myope                   no                      reduced                 none
+young               myope                   no                      normal                  soft
+young               myope                   yes                     reduced                 none
+young               myope                   yes                     normal                  hard
+young               hypermetrope            no                      reduced                 none
+young               hypermetrope            no                      normal                  soft
+young               hypermetrope            yes                     reduced                 none
+young               hypermetrope            yes                     normal                  hard
+pre-presbyopic      myope                   no                      reduced                 none
+pre-presbyopic      myope                   no                      normal                  soft
+pre-presbyopic      myope                   yes                     reduced                 none
+pre-presbyopic      myope                   yes                     normal                  hard
+pre-presbyopic      hypermetrope            no                      reduced                 none
+pre-presbyopic      hypermetrope            no                      normal                  soft
+pre-presbyopic      hypermetrope            yes                     reduced                 none
+pre-presbyopic      hypermetrope            yes                     normal                  none
+presbyopic          myope                   no                      reduced                 none
+presbyopic          myope                   no                      normal                  none
+presbyopic          myope                   yes                     reduced                 none
+presbyopic          myope                   yes                     normal                  hard
+presbyopic          hypermetrope            no                      reduced                 none
+presbyopic          hypermetrope            no                      normal                  soft
+presbyopic          hypermetrope            yes                     reduced                 none
+presbyopic          hypermetrope            yes                     normal                  none
+ 
+>>> data.sort(key=lambda r: r[-1])
+>>> for value, group in itertools.groupby(data, lambda r: r[-1]):
+...     print '-----------'
+...     print 'Group: ' + value
+...     print_data(group)
+...
+-----------
+Group: hard
+young               myope                   yes                     normal                  hard
+young               hypermetrope            yes                     normal                  hard
+pre-presbyopic      myope                   yes                     normal                  hard
+presbyopic          myope                   yes                     normal                  hard
+-----------
+Group: none
+young               myope                   no                      reduced                 none
+young               myope                   yes                     reduced                 none
+young               hypermetrope            no                      reduced                 none
+young               hypermetrope            yes                     reduced                 none
+pre-presbyopic      myope                   no                      reduced                 none
+pre-presbyopic      myope                   yes                     reduced                 none
+pre-presbyopic      hypermetrope            no                      reduced                 none
+pre-presbyopic      hypermetrope            yes                     reduced                 none
+pre-presbyopic      hypermetrope            yes                     normal                  none
+presbyopic          myope                   no                      reduced                 none
+presbyopic          myope                   no                      normal                  none
+presbyopic          myope                   yes                     reduced                 none
+presbyopic          hypermetrope            no                      reduced                 none
+presbyopic          hypermetrope            yes                     reduced                 none
+presbyopic          hypermetrope            yes                     normal                  none
+-----------
+Group: soft
+young               myope                   no                      normal                  soft
+young               hypermetrope            no                      normal                  soft
+pre-presbyopic      myope                   no                      normal                  soft
+pre-presbyopic      hypermetrope            no                      normal                  soft
+presbyopic          hypermetrope            no                      normal                  soft
+
+ 

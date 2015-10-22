@@ -1,0 +1,207 @@
+
+Python实例讲解 -- 接收邮件 (亲测)
+
+    博客分类：
+    Python 2 / Wxpython
+
+PythonGmailASP 
+
+1. 主要使用了 poplib 组件
+
+ 
+Python代码  收藏代码
+
+    # -*- coding: utf-8 -*-  
+      
+    import poplib  
+    from email import parser  
+      
+    host = 'pop.gmail.com'  
+    username = 'mine@gmail.com'  
+    password = '*******'  
+      
+    pop_conn = poplib.POP3_SSL(host)  
+    pop_conn.user(username)  
+    pop_conn.pass_(password)  
+      
+    #Get messages from server:  
+    messages = [pop_conn.retr(i) for i in range(1, len(pop_conn.list()[1]) + 1)]  
+      
+    # Concat message pieces:  
+    messages = ["\n".join(mssg[1]) for mssg in messages]  
+      
+    #Parse message intom an email object:  
+    messages = [parser.Parser().parsestr(mssg) for mssg in messages]  
+    for message in messages:  
+        print message['Subject']  
+    pop_conn.quit()  
+
+ 
+
+优点： 可以输出内容
+
+缺点： 只检测一次
+
+ 
+
+ 
+
+2. 使用第三方插件 chilkat
+
+ 
+Python代码  收藏代码
+
+    # -*- coding: utf-8 -*-  
+      
+    import sys  
+    import chilkat  
+      
+    host = 'pop.gmail.com'  
+    username = 'mine@gmail.com'  
+    password = '******'  
+      
+    # The mailman object is used for receiving (POP3)  
+    # and sending (SMTP) email.  
+    mailman = chilkat.CkMailMan()  
+      
+    # Any string argument automatically begins the 30-day trial.  
+    success = mailman.UnlockComponent("30-day trial")  
+    if (success != True):  
+        print "Component unlock failed"  
+        sys.exit()  
+      
+    # Set the GMail account POP3 properties.  
+    mailman.put_MailHost(host)  
+    mailman.put_PopUsername(username)  
+    mailman.put_PopPassword(password)  
+    mailman.put_PopSsl(True)  
+    mailman.put_MailPort(995)  
+      
+    # Read mail headers and one line of the body.  
+    # To get the full emails, call CopyMail instead (no arguments)  
+    bundle = mailman.GetAllHeaders(1)  
+      
+    if (bundle == None ):  
+        print mailman.lastErrorText()  
+        sys.exit()  
+      
+    for i in range(0,bundle.get_MessageCount()):  
+        email = bundle.GetEmail(i)  
+      
+        # Display the From email address and the subject.  
+        print email.ck_from()  
+        print email.subject() + "\n"  
+
+ 
+
+安装见附件
+
+主页：http://www.chilkatsoft.com/products.asp
+
+安装：http://www.chilkatsoft.com/installPython27.asp
+
+ 
+
+安装很简单，点击 showPythonPath.bat 测试一下环境，然后复制 _chilkat.pyd 和 chilkat.py 到 Python27\Lib\site-packages\ 下就可以
+
+ 
+
+ 
+
+优点： 可以多次检测
+
+缺点： 只可以看到来源和主题，无法看到内容
+
+ 
+
+ 
+
+ 
+
+3. 检测邮件，返回未读数值
+
+ 
+Python代码  收藏代码
+
+    def gmail_checker(username,password):  
+            import imaplib,re  
+            i=imaplib.IMAP4_SSL('pop.gmail.com')  
+            try:  
+                    i.login(username,password)  
+                    x,y=i.status('INBOX','(MESSAGES UNSEEN)')  
+                    messages=int(re.search('MESSAGES\s+(\d+)',y[0]).group(1))  
+                    unseen=int(re.search('UNSEEN\s+(\d+)',y[0]).group(1))  
+                    return (messages,unseen)  
+            except:  
+                    return False,0  
+      
+    # Use in your scripts as follows:  
+      
+    messages,unseen = gmail_checker('mine@gmail.com','******')  
+    print "%i messages, %i unseen" % (messages,unseen)  
+
+ 
+
+ 
+
+ 
+
+4. 很好的返回主题和内容
+
+ 
+Python代码  收藏代码
+
+    import imaplib  
+    import email  
+      
+    def extract_body(payload):  
+        if isinstance(payload,str):  
+            return payload  
+        else:  
+            return '\n'.join([extract_body(part.get_payload()) for part in payload])  
+      
+    conn = imaplib.IMAP4_SSL("pop.gmail.com", 993)  
+    conn.login("mine@gmail.com", "******")  
+    conn.select()  
+    typ, data = conn.search(None, 'UNSEEN')  
+    try:  
+        for num in data[0].split():  
+            typ, msg_data = conn.fetch(num, '(RFC822)')  
+            for response_part in msg_data:  
+                if isinstance(response_part, tuple):  
+                    msg = email.message_from_string(response_part[1])  
+                    subject=msg['subject']                     
+                    print(subject)  
+                    payload=msg.get_payload()  
+                    body=extract_body(payload)  
+                    print(body)  
+            typ, response = conn.store(num, '+FLAGS', r'(\Seen)')  
+    finally:  
+        try:  
+            conn.close()  
+        except:  
+            pass  
+        conn.logout()  
+
+ 
+
+参考： http://www.doughellmann.com/PyMOTW/imaplib/
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+    chilkat-python-2.7-win32.zip (2.6 MB)
+    下载次数: 15
+
+

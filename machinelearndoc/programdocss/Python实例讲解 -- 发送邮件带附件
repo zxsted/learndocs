@@ -1,0 +1,145 @@
+
+Python实例讲解 -- 发送邮件带附件 (亲测) http://justcoding.iteye.com/blog/918933
+
+    博客分类：
+    Python 2 / Wxpython
+
+PythonGmailOS.net 
+
+主要使用了 smtp 和 email 组件
+
+ 
+Java代码  收藏代码
+
+    # -*- coding: utf-8 -*-  
+      
+    import os  
+    import smtplib  
+    import mimetypes  
+    from email.MIMEMultipart import MIMEMultipart  
+    from email.MIMEBase import MIMEBase  
+    from email.MIMEText import MIMEText  
+    from email.MIMEAudio import MIMEAudio  
+    from email.MIMEImage import MIMEImage  
+    from email.Encoders import encode_base64  
+      
+    def sendMail(subject, text, *attachmentFilePaths):  
+        gmailUser = 'mine@gmail.com'  
+        gmailPassword = '******'  
+        recipient = 'to@gmail.com'  
+      
+        msg = MIMEMultipart()  
+        msg['From'] = gmailUser  
+        msg['To'] = recipient  
+        msg['Subject'] = subject  
+        msg.attach(MIMEText(text))  
+      
+        for attachmentFilePath in attachmentFilePaths:  
+            msg.attach(getAttachment(attachmentFilePath))  
+      
+        mailServer = smtplib.SMTP('smtp.gmail.com', 587)  
+        mailServer.ehlo()  
+        mailServer.starttls()  
+        mailServer.ehlo()  
+        mailServer.login(gmailUser, gmailPassword)  
+        mailServer.sendmail(gmailUser, recipient, msg.as_string())  
+        mailServer.close()  
+      
+        print('Sent email to %s' % recipient)  
+      
+    def getAttachment(attachmentFilePath):  
+        contentType, encoding = mimetypes.guess_type(attachmentFilePath)  
+      
+        if contentType is None or encoding is not None:  
+            contentType = 'application/octet-stream'  
+      
+        mainType, subType = contentType.split('/', 1)  
+        file = open(attachmentFilePath, 'rb')  
+      
+        if mainType == 'text':  
+            attachment = MIMEText(file.read())  
+        elif mainType == 'message':  
+            attachment = email.message_from_file(file)  
+        elif mainType == 'image':  
+            attachment = MIMEImage(file.read(),_subType=subType)  
+        elif mainType == 'audio':  
+            attachment = MIMEAudio(file.read(),_subType=subType)  
+        else:  
+            attachment = MIMEBase(mainType, subType)  
+        attachment.set_payload(file.read())  
+        encode_base64(attachment)  
+      
+        file.close()  
+      
+        attachment.add_header('Content-Disposition', 'attachment',   filename=os.path.basename(attachmentFilePath))  
+        return attachment  
+      
+      
+    # start to test  
+    sendMail('here is a subject', 'Send a email with Gmail','C:\AppServ\www\python\wx.zip')  
+
+ 
+
+缺点： 不支持html
+
+ 
+
+ 
+
+ 
+smtplib.SMTP([host[, port[, local_hostname[, timeout]]]])
+
+　　SMTP类构造函数，表示与SMTP服务器之间的连接，通过这个连接我们可以向smtp服务器发送指令，执行相关操作（如：登陆、发送邮件）。 该类提供了许多方法，将在下面介绍。它的所有参数都是可选的，其中host参数表示smtp服务器主机名，例如"smtp.yeah.net"；port表示smtp服务的端口，默认是25；如果在创建SMTP对象的时候提供了这两个参数，在初始化的时候会自动 调用connect方法去连接服务器。
+　　smtplib模块还提供了SMTP_SSL类和LMTP类，对它们的操作与SMTP基本一致。
+
+
+　　smtplib.SMTP提供的方法：
+
+ 
+SMTP.set_debuglevel(level)
+
+　　设置是否为调试模式。默认为False，即非调试模式，表示不输出任何调试信息。
+
+ 
+SMTP.connect([host[, port]])
+
+　　连接到指定的smtp服务器。参数分别表示smpt主机和端口。注意: 也可以在host参数中指定端口号（如：smpt.yeah.net:25），这样就没必要给出port参数。
+
+ 
+SMTP.docmd(cmd[, argstring])
+
+　　向smtp服务器发送指令。可选参数argstring表示指令的参数。下面的例子完全通过调用docmd方法向服务器发送指令来实现邮件的发送（在smtp.yeah.net邮件服务器上试验通过。其他邮件服务器没有试过）：
+
+ 
+
+ 
+SMTP.helo([hostname])
+
+　　使用"helo"指令向服务器确认身份。相当于告诉smtp服务器“我是谁”。
+
+ 
+SMTP.has_extn(name)
+
+　　判断指定名称在服务器邮件列表中是否存在。出于安全考虑，smtp服务器往往屏蔽了该指令。
+
+ 
+SMTP.verify(address)
+
+　　判断指定邮件地址是否在服务器中存在。出于安全考虑，smtp服务器往往屏蔽了该指令。
+SMTP.login(user, password)
+
+　　登陆到smtp服务器。现在几乎所有的smtp服务器，都必须在验证用户信息合法之后才允许发送邮件。
+
+ 
+SMTP.sendmail(from_addr, to_addrs, msg[, mail_options, rcpt_options])
+
+　　发送邮件。这里要注意一下第三个参数，msg是字符串，表示邮件。我们知道邮件一般由标题，发信人，收件人，邮件内容，附件等构成，发送邮件的时候，要注意msg的格式。这个格式就是smtp协议中定义的格式。
+
+ 
+
+ 
+SMTP.quit()
+
+　　断开与smtp服务器的连接，相当于发送"quit"指令。
+
+ 

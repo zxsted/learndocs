@@ -1,0 +1,52 @@
+multipart/form-data和application/x-www-form-urlencoded的区别,阅读multipart/form-data和application/x-www-form-urlencoded的区别, FORM元素的enctype属性指定了表单数据向服务器提交时所采用的编码类型，默认的缺省值是“application/x-www-form-urlenco
+   
+
+    FORM元素的enctype属性指定了表单数据向服务器提交时所采用的编码类型，默认的缺省值是“application/x-www-form-urlencoded”。
+
+    然而，在向服务器发送大量的文本、包含非ASCII字符的文本或二进制数据时这种编码方式效率很低。
+
+    在文件上载时，所使用的编码类型应当是“multipart/form-data”，它既可以发送文本数据，也支持二进制数据上载。
+
+    Browser端<form>表单的ENCTYPE属性值为multipart/form-data，它告诉我们传输的数据要用到多媒体传输协议，由于多媒体传输的都是大量的数据，所以规定上传文件必须是post方法，<input>的type属性必须是file。 
+
+
+
+
+
+http-关于application/x-www-form-urlencoded等字符编码的解释说明
+2012-07-03 10:23 6653人阅读 评论(1) 收藏 举报
+浏览器actionfileurlserver服务器
+在Form元素的语法中，EncType表明提交数据的格式 用 Enctype 属性指定将数据回发到服务器时浏览器使用的编码类型。 下边是说明： application/x-www-form-urlencoded： 窗体数据被编码为名称/值对。这是标准的编码格式。 multipart/form-data： 窗体数据被编码为一条消息，页上的每个控件对应消息中的一个部分。 text/plain： 窗体数据以纯文本形式进行编码，其中不含任何控件或格式字符。
+ 补充
+form的enctype属性为编码方式，常用有两种：application/x-www-form-urlencoded和multipart/form-data，默认为application/x-www-form-urlencoded。 当action为get时候，浏览器用x-www-form-urlencoded的编码方式把form数据转换成一个字串（name1=value1&name2=value2...），然后把这个字串append到url后面，用?分割，加载这个新的url。 当action为post时候，浏览器把form数据封装到http body中，然后发送到server。 如果没有type=file的控件，用默认的application/x-www-form-urlencoded就可以了。 但是如果有type=file的话，就要用到multipart/form-data了。浏览器会把整个表单以控件为单位分割，并为每个部分加上Content-Disposition(form-data或者file),Content-Type(默认为text/plain),name(控件name)等信息，并加上分割符(boundary)。
+
+
+
+
+
+multipart/form-data和application/x-www-form-urlencoded的区别
+分类： JSP 2009-06-19 18:00 1276人阅读 评论(0) 收藏 举报
+浏览器actionfileurlserver服务器
+
+在Form元素的语法中，EncType表明提交数据的格式 
+
+用 Enctype 属性指定将数据回发到服务器时浏览器使用的编码类型。 
+下边是说明： 
+application/x-www-form-urlencoded： 窗体数据被编码为名称/值对。这是标准的编码格式。 
+multipart/form-data： 窗体数据被编码为一条消息，页上的每个控件对应消息中的一个部分。 
+text/plain： 窗体数据以纯文本形式进行编码，其中不含任何控件或格式字符。
+
+ 
+
+补充
+
+form的enctype属性为编码方式，常用有两种：application/x-www-form-urlencoded和multipart/form-data，默认为application/x-www-form-urlencoded。 
+
+当action为get时候，浏览器用x-www-form-urlencoded的编码方式把form数据转换成一个字串（name1=value1&name2=value2...），然后把这个字串append到url后面，用?分割，加载这个新的url。 
+当action为post时候，浏览器把form数据封装到http body中，然后发送到server。 
+
+如果没有type=file的控件，用默认的application/x-www-form-urlencoded就可以了。 
+但是如果有type=file的话，就要用到multipart/form-data了。浏览器会把整个表单以控件为单位分割，并为每个部分加上Content-Disposition(form-data或者file),Content-Type(默认为text/plain),name(控件name)等信息，并加上分割符
+
+
+

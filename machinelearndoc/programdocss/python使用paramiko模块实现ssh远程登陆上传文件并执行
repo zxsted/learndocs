@@ -1,0 +1,154 @@
+python使用paramiko模块实现ssh远程登陆上传文件并执行
+作者： 字体：[增加 减小] 类型：转载
+使用paramiko，ssh远程登陆，长传文件并执行。其中用到了多线程和队列,paramiko是用python语言写的一个模块，遵循SSH2协议，支持以加密和认证的方式，进行远程服务器的连接。
+
+程序执行时需要读取两个文件command.txt和ipandpass.txt。格式如下：
+
+复制代码 代码如下:
+
+command.txt:
+ThreadNum:1
+port:22
+local_dir:hello_mkdir
+remote_dir:hello_mkdir
+alter_auth:chmod 755 hello_mkdir
+exec_program:./hello_mkdir
+
+ipandpass.txt:
+ip username password
+
+程序中的队列操作是修改的别的程序，写的确实不错。
+该程序亦正亦邪，如果拿去做坏事，我先声明与我无关，我只是分享我的代码罢了。
+希望有兴趣的同志们来讨论技术应用。
+这其中用到了paramiko，队列，多线程，后续也会写一些这三个方面的东西。欢迎批评指正。
+其实这个程序有些地方还有待优化。
+
+复制代码 代码如下:
+
+#function:upload files through ssh protocal and excute the files
+#lib:paramiko
+#MyThread:init a thread to run the function
+#ThreadPol:init a thread pool
+#uploadAndExecu:upload file and excute
+#readConf:read config file
+#-*- coding = utf-8 -*-
+
+
+import Queue
+import sys
+import threading
+import paramiko
+import socket
+from threading import Thread
+import time
+
+class MyThread(Thread):
+    def __init__(self, workQueue, timeout=1):
+        Thread.__init__(self)
+        self.timeout = timeout
+        self.setDaemon(False)
+        self.workQueue = workQueue
+        self.start()
+        #print 'i am runnning ...'
+
+    def run(self):
+        emptyQueue = 0
+        while True:
+            try:
+                callable, username, password, ipAddress, port,comms = self.workQueue.get(timeout = self.timeout)
+                #print 'attacking :',ipAddress,username,password,threading.currentThread().getName(),' time : '
+                callable(username,password, ipAddress, port,comms)
+
+            except Queue.Empty:
+                print threading.currentThread().getName(),":queue is empty ; sleep 5 seconds\n"
+                emptyQueue += 1
+                #judge the queue,if it is empty or not.
+                time.sleep(5)
+                if emptyQueue == 5:
+                    print threading.currentThread().getName(),'i  quit,the queue is empty'
+                    break
+            except Exception, error:
+                print error
+
+class ThreadPool:
+    def __init__(self, num_of_threads=10):
+        self.workQueue = Queue.Queue()
+        self.threads = []
+        self.__createThreadPool(num_of_threads)
+
+    #create the threads pool
+    def __createThreadPool(self, num_of_threads):
+        for i in range(num_of_threads):
+            thread = MyThread(self.workQueue)
+            self.threads.append(thread)
+
+    def wait_for_complete(self):
+        #print len(self.threads)
+        while len(self.threads):
+            thread = self.threads.pop()
+            if thread.isAlive():
+
+                thread.join()
+
+    def add_job(self, callable, username, password, ipAddress, Port,comms):
+        self.workQueue.put((callable, username, password, ipAddress, Port,comms))
+
+def uploadAndExecu(usernam,password,hostname,port,comm):
+    print usernam,password,hostname,port,comm
+    try:
+
+        t = paramiko.Transport((hostname,int(port)))
+        t.connect(username=username,password=password)
+        sftp=paramiko.SFTPClient.from_transport(t)
+        sftp.put(comm['local_dir'],comm['remote_dir'])
+    except Exception,e:
+        print 'upload files failed:',e
+        t.close()
+    finally:
+        t.close()
+
+   
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.load_system_host_keys()
+        ssh.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
+        ssh.connect(hostname, port=int(port), username=username, password=password)
+        ssh.exec_command(comm['alter_auth'])
+        ssh.exec_command(comm['exec_program'])
+    except Exception,e:
+        print 'chang file auth or execute the file failed:',e
+    ssh.close()
+
+   
+def readConf():
+    comm={}
+    try:
+        f = file('command.txt','r')
+        for l in f:
+            sp = l.split(':')
+            comm[sp[0]]=sp[1].strip('\n')
+    except Exception,e:
+        print 'open file command.txt failed:',e
+    f.close()
+
+    return comm
+
+if __name__ == "__main__":
+
+    commandLine = readConf()
+    print commandLine
+    #prepare the ips
+
+    wm = ThreadPool(int(commandLine['ThreadNum']))
+
+    try:
+        ipFile = file('ipandpass.txt','r')
+    except:
+        print "[-] ip.txt Open file Failed!"
+        sys.exit(1)
+
+    for line in ipFile:
+        IpAdd,username,pwd = line.strip('\r\n').split(' ')
+        wm.add_job(uploadAndExecu,username,pwd,IpAdd,commandLine['port'],commandLine)
+
+

@@ -1,0 +1,30 @@
+
+
+soup.findAll('div',attrs={"class":"result card"})[0].a.getText();
+soup.findAll('div',attrs={"class":"sc card sc_zhidao"})[0].findAll('a')
+
+<div id="sc_baike_general_1_1" class="sc card sc_baike_general"
+<div id="sc_pic_1_2" class="result card sc sc_pic"
+<div id="sc_zhidao_1_4" class="sc card sc_zhidao" 
+
+file = open('/home/zxsted/data/msmali_BAIDUBROW_20141128d_30k_Page1_t3000/wd_00001_Page1.html','r')
+ content_lines =  file.readlines()
+content_str = '\n'.join(content_lines)
+soup = BeautifulSoup(content_str)
+soup.findAll('div',attrs={"class":"sc card sc_zhidao"})[0].a.getText()
+
+attrs = (soup.findAll('div',attrs={"class":"sc card sc_baike_general"})[0].findAll('a')[1].attrs)
+ attrs
+[(u'href', u'http://baike.so.com/doc/1770764.html'), (u'class', u'text-block'), (u'data-log', u'1')]
+>>> attrs[1]
+(u'class', u'text-block')
+>>> attrs[0]
+(u'href', u'http://baike.so.com/doc/1770764.html')
+>>> attrs[0][1]
+u'http://baike.so.com/doc/1770764.html'
+>>> attrs[0][1]
+ 
+map = dict(attrs)
+
+map['href']
+u'http://baike.so.com/doc/1770764.html'

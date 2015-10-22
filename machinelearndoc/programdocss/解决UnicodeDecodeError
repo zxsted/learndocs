@@ -1,0 +1,85 @@
+
+
+1．问题描述：一个在Django框架下使用Python编写的定时更新项目，在Windows系统下测试无误，在Linux系统下测试，报如下错误：
+
+ascii codec can't decode byte 0xe8 in position 0:ordinal not in range(128)
+
+2．原因分析：字符问题。在Windows系统转Linux系统时，字符问题很容易出现。
+
+3．解决办法：在出现问题的页加上如下三行即可：
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')	
+
+
+在写Python过程中，需要实现对应的字符串替换，将gVal['newPostPatStr']的值：
+
+但是在用中的${titleName}替换为一个帖子的真正的标题。
+
+gVal['newPostPatStr'].replace("${titleName}", postDict['titleName']);
+
+的时候，出现上述错误：
+
+    UnicodeDecodeError: ‘ascii’ codec can’t decode byte 0xe6 in position 0: ordinal not in range(128)
+
+【解决过程】
+
+1.很久之前，在用python的时候，就出现过很多次的某str类型变量，去调用replace，结果不起作用。
+
+此处则是直接错误，无法运行。
+
+2..注意到错误提示中的“ordinal not in range(128)”，意思是，字符不在128范围内，即说明不是普通的ASCII字符，超出处理能力了。所以感觉是str类型的变量，无法处理超过ASCII之外的字符。所以想到去将对应原始字符转换为unicode：
+?
+1
+	
+gVal['newPostPatStr'] = unicode(gVal['newPostPatStr']);
+
+然后再去调用上面的replace，结果此句执行结果，也出现和上面同样的错误，无法转换为unicode。
+
+3.尝试了去用re.compile,然后xxx.sub的形式，也是同样错误，无法替换字符串。
+
+4.后来尝试了：
+?
+1
+2
+	
+compiled = re.compile(r"${titleName}");
+replacedStr = compiled.sub(postDict['titleName'], gVal['newPostPatStr']);
+
+以及
+?
+1
+2
+	
+compiled = re.compile(r"\$\{titleName\}");
+replacedStr = compiled.sub(postDict['titleName'], gVal['newPostPatStr']);
+
+都还是出现同样错误。
+
+5.最后是通过，在最开始的时候，得到gVal['newPostPatStr']的值之后，
+
+调用unicode时候指定对应的编码：
+?
+1
+	
+gVal['newPostPatStr'] = unicode(gVal['newPostPatStr'], "utf-8");
+
+然后就可以强制转换为unicode了，然后之后的字符串处理，就都是可以正常的了。
+
+ 
+
+【总结】
+
+此处是最开始获得某字符串变量，没有通过指定编码为utf-8转换为unicode，然后接下来的操作，比如replace替换，就都无法处理包含了utf-8的，超出了128 range的字符，才会报UnicodeDecodeError错的。
+
+所以，以后遇到UnicodeDecodeError方面的错误，那就先去看看，是不是由于没有指定合适的编码。如果指定了对应的编码后，字符串的一切操作（replace, re.sub等），一般来说，就都可以正常操作了。
+
+不过，总的来说，还是要对字符编码很熟悉的，否则，Python中的字符编码方面的问题，真的会让人很头大，虽然python本身对字符编码做的已经不错了。。。
+
+2. 
+
+import sys
+default_encoding = 'utf-8'
+if sys.getdefaultencoding() != default_encoding:
+    reload(sys)
+    sys.setdefaultencoding(default_encoding)

@@ -1,0 +1,187 @@
+    python 系统学习笔记（九）---异常处理
+
+    2013-03-12 08:59:09     我来说两句       作者：ychw365
+    收藏    我要投稿 
+
+       Python的异常处理能力是很强大的，可向用户准确反馈出错信息。在Python中，异常也是对象，可对它进行操作。所有异常都是基类Exception的成员。所有异常都从基类Exception继承，而且都在exceptions模块中定义。Python自动将所有异常名称放在内建命名空间中，所以程序不必导入exceptions模块即可使用异常。一旦引发而且没有捕捉SystemExit异常，程序执行就会终止。如果交互式会话遇到一个未被捕捉的SystemExit异常，会话就会终止。
+    try/except：捕捉由代码中的异常并恢复，匹配except里面的错误，并自行except中定义的代码，后继续执行程序（发生异常后，由except捕捉到异常后，不会中断程序，继续执行try语句后面的程序）
+    try/finally: 无论异常是否发生，都执行清理行为 （发生异常时程序会中断程序，只不过会执行finally后的代码）
+    raise: 手动在代码中接触发异常。
+    assert: 有条件地在程序代码中触发异常。
+    with/as  实现环境管理器。
+     
+     
+     
+    1:try语句:
+    该种异常处理语法的规则是：
+    执行try下的语句，如果引发异常，则执行过程会跳到第一个except语句。
+    如果第一个except中定义的异常与引发的异常匹配，则执行该except中的语句。
+      如果引发的异常不匹配第一个except，则会搜索第二个except，允许编写的except数量没有限制。
+    如果所有的except都不匹配，则异常会传递到下一个调用本代码的最高层try代码中。
+    如果没有发生异常，则执行else块代码。
+    用户定义的异常要写成类的实例，而不是字符串。
+    finally可以和except和else分句出现在相同的try语句内
+    1.1使用try和except语句来捕获异常
+    try:
+       block
+    except [exception,[data…]]:
+       block
+    try的完整形式：try/多个except/else语句
+    else是可选的
+    try首行底下的代码块代表此语句的主要动作：试着执行的程序代码。except分句定义try代码块内引发的异常处理器，而else分句（如果有）则是提供没有发生异常时候要执行的处理器。
+     
+    import sys
+    try:
+        s=raw_input('test EOFError:')
+    except EOFError:
+        print 'meet EOError'
+        sys.exit()
+    except:
+        print 'hello'
+    1.2 使用try跟finally:
+    语法如下:
+    try:
+       block
+    finally:
+       block
+    该语句的执行规则是：
+    ·   执行try下的代码。
+    ·   如果发生异常，在该异常传递到下一级try时，执行finally中的代码。
+    ·   如果没有发生异常，则执行finally中的代码。
+    第二种try语法在无论有没有发生异常都要执行代码的情况下是很有用的。例如我们在python中打开一个文件进行读写操作，我在操作过程中不管是否出现异常，最终都是要把该文件关闭的。
+    这两种形式相互冲突，使用了一种就不允许使用另一种，而功能又各异
+    try:
+        f=open('dic.ini','w')
+        f.write('123')
+    finally:
+        print 'close file'
+        f.close()
+    1.3 统一try/except/finally分句
+    try:
+        main-action:
+    except Exception1:
+        hander1
+    except Exception2:
+        hander2
+    ...
+    else:
+        else-block
+    finally:
+        finally-block
+    这语句中main-action代码会先执行。如果该程序代码（main-action）引发异常，那么except代码块都会逐一测试，寻找与抛出的异常相符的语句。如果引发异常的是Exception1则会执行hander1代码块，如果引发异常的是Exception2，则会执行hander2代码块。以此类推。如果没有
+    引发异常，将会执行else-block代码块。
+    无论前面发生什么，当main-action代码块完成时。finally-block都会执行。
+     
+     
+    2.用raise语句手工引发一个异常: 自定义异常
+    raise [exception[,data]]
+    在Python中，要想引发异常，最简单的形式就是输入关键字raise，后跟要引发的异常的名称。异常名称标识出具体的类：Python异常是那些类的对象。执行raise语句时，Python会创建指定的异常类的一个对象。raise语句还可指定对异常对象进行初始化的参数。为此，请在异常类的名称后添加一个逗号以及指定的参数（或者由参数构成的一个元组）。
+    例:
+    try:
+        raise MyError #自己抛出一个异常
+    except MyError:
+        print 'a error'
+     
+    [python]  
+    class  ShortInputException(Exception):  
+      
+        '''''A user-defined exception class.'''  
+      
+        def  __init__ (self, length, atleast):  
+      
+            Exception.__init__(self)  
+      
+            self.length = length  
+      
+            self.atleast = atleast  
+      
+    try :  
+      
+        s =  raw_input( 'Enter something --> ')  
+      
+        if len (s) <  3 :  
+      
+            raise ShortInputException(len (s), 3 )  
+      
+        # Other work can continue as usual here  
+      
+    except EOFError:  
+      
+        print '\nWhy did you do an EOF on me?'  
+      
+    except ShortInputException, x:  
+      
+        print 'ShortInputException: The input was of length %d, \  
+      
+        was expecting at least %d' % (x.length,x.atleast)  
+      
+    else:  
+      
+        print 'No exception was raised.'  
+     
+     
+    assert可以有条件地在程序代码中触发异常，可以认为是有条件的raise.
+    牢记：assert几乎都是用来收集用户定义的约束条件，而不是捕捉内在的程序设计错误。因为Python会自动收集程序的设计错误，通常咩有必要写assert去捕捉超出索引值，类型不匹配以及除数为0之类的事。
+    引发的异常为:AssertionError。如果没有被try捕捉到，就会终止程序。
+    该语句形式:
+    assert  <test>,<data>
+     
+    [python] 
+    def f(x):  
+      
+        assert x>0,'x must be great zerot'  
+      
+        return x**2  
+      
+    f(-1)  
+     
+     
+    3.内置Exception类
+    Python把内置异常组织成层次，来支持各种捕捉模式
+    Exception：    异常的顶层根超类
+    StandardError:    所有内置错误异常的超类
+    ArithmeticError:    所有数值错误的超类
+    OverflowError:    识别特定的数值错误的子类
+    [python]  
+    import exceptions  
+      
+    help(exceptions)  
+     
+    4. 采用sys模块回溯最后的异常
+    import sys
+    try:
+       block
+    except:
+       info=sys.exc_info()
+       print info[0],":",info[1]
+    或者以如下的形式:
+    import sys
+        tp,val,td = sys.exc_info()
+    sys.exc_info()的返回值是一个tuple, (type, value/message, traceback)
+    这里的type ---- 异常的类型
+    value/message ---- 异常的信息或者参数
+    traceback ---- 包含调用栈信息的对象。
+    从这点上可以看出此方法涵盖了traceback.
+    习题：
+    利用异常打印出行号和函数名称 利用 raise
+    提示：
+    [python]  
+    f = sys.exc_info()[2].tb_frame.f_back  
+    f.f_code.co_name, f.f_lineno  #函数名 行号  
+     
+    sayHello
+    [python] 
+    import sys  www.2cto.com
+    class  PrintNameLine(Exception):  
+      
+        def  __init__ (self,say):  
+      
+            Exception.__init__(self)  
+      
+            self.sayhello = say  
+      
+                   
+    try :  
+        raise PrintNameLine('helloworld')  
+    except PrintNameLine,x:  
+        print '%s'%(x.sayhello )  

@@ -1,0 +1,172 @@
+
+python中文decode和encode转码
+2011-10-25 19:08 1021人阅读 评论(0) 收藏 举报
+pythonregexeclipsecodecclass正则表达式
+
+转载：http://blog.chinaunix.net/u2/84280/showart_2207975.html
+
+字符串在Python内部的表示是unicode编码，因此，在做编码转换时，通常需要以unicode作为中间编码，即先将其他编码的字符串解码（decode）成unicode，再从unicode编码（encode）成另一种编码。
+
+decode的作用是将其他编码的字符串转换成unicode编码，如str1.decode('gb2312')，表示将gb2312编码的字符串str1转换成unicode编码。
+
+encode的作用是将unicode编码转换成其他编码的字符串，如str2.encode('gb2312')，表示将unicode编码的字符串str2转换成gb2312编码。
+
+因此，转码的时候一定要先搞明白，字符串str是什么编码，然后decode成unicode，然后再encode成其他编码
+
+代码中字符串的默认编码与代码文件本身的编码一致。
+如：s='中文'
+如果是在utf8的文件中，该字符串就是utf8编码，如果是在gb2312的文件中，则其编码为gb2312。
+
+（与代码本身的编码是一致的！）
+
+测试：
+我的eclipse里面代码为utf-8编码的。然后我这样写代码
+s="你好"
+s=s.decode('gb2312').encode('utf-8')
+print s
+报错：
+UnicodeDecodeError: 'gb2312' codec can't decode bytes in position 2-3: illegal multibyte sequence
+原因：因为我的文件为UTF-8编码的。所以你想用gb2312将其转成unicode是不可能的。
+所以正确的写法应当是：
+s="你好"
+print s
+s=s.decode('utf-8').encode('utf-8') 要用UTF-8来做编码
+print s
+哈哈发现打印出来的是乱码那只能说明一件事情就是我的eclipse控制台是GB2312的编码！
+
+请看：
+如何获得系统的默认编码？
+#!/usr/bin/env python
+#coding=utf-8
+import sys
+print sys.getdefaultencoding()
+
+该段程序在英文WindowsXP上输出为：ascii 。我发现我的linux上面也是ascii编码。所以我想打印出来看到的乱码是正常的。因为我其实是utf-8编码的。
+
+在某些IDE中，字符串的输出总是出现乱码，甚至错误，其实是由于IDE的结果输出控制台自身不能显示字符串的编码，而不是程序本身的问题。（是的。我的eclipse控制台就是gb2312的编码所以我文件保存为utf-8的时候然后再通过打印是乱码了！）
+
+
+1、读文件命令肯定是：
+myfile = codecs.open("c.html","r","utf-8") 因为我用gb2312来读的话报错
+
+心得：检查一个字符串是什么编码只需要看一下decode 如果用gb2312来decode没报错的话就表示是gb2312
+如果用utf-8来decode没有报错的话就表示是utf-8
+
+现在遇到一个问题就是
+请看：
+myfile = codecs.open("c.html","r","utf-8")
+str = myfile.read()                               
+content = str.replace("\n"," ")  
+content = content.encode('utf-8')
+print content
+没有报错
+再看：
+myfile = codecs.open("c.html","r","utf-8")
+str = myfile.read()                                 #显示中文
+content = str.replace("\n"," ")  
+content = content.encode('gb2312')                 用gb2312
+print content
+报错：UnicodeEncodeError: 'gb2312' codec can't encode character u'\u2014' in position 12628
+
+再看：
+myfile = codecs.open("d.html","r","utf-8")
+str = myfile.read()                                 #显示中文
+content = str.replace("\n"," ")  
+content = content.encode('gb2312')                 用gb2312
+print content
+没问题
+myfile = codecs.open("d.html","r","utf-8")
+str = myfile.read()                                 #显示中文
+content = str.replace("\n"," ")  
+content = content.encode('utf-8')                
+print content
+也没问题
+
+结论：我想是c.html页面里面 存在某些 特殊字符 只支持utf-8编码。而不支持gb2312的编码！
+而d.html没有这种特殊字符。这也就解释了为什么
+有的文件并没有发生我们想像中的问题！
+
+所以我感觉打开文件肯定是用utf-8来读取得到一个unicode编码值！
+然后对其做utf-8的编码处理。因为如果你做gb2312处理的话就会报错了！
+
+接着：
+我看了一下我的正则表达式发现如果用gb2312做解码处理的话一样会报错。所以断定肯定是utf-8编码了！
+regex3 = regex3.decode('utf-8')
+print type(regex3)                #返回为unicode码了！
+print regex3                      #居然打印为正常的中文显示了 奇怪
+
+尝试解决办法：
+1、全部用unicode处理
+即正则我用regex3 = regex3.decode('utf-8') 将其处理成 unicode编码了。然后内容也
+print type(content) 也是unicode编码。结果还是不行！
+
+难道是我的linux终端的编码引起的吗？我看了一下
+locale 发现是GBK的终端的。即只有GBK编码才能显示出来为中文的！
+于是我将
+regex3 = regex3.decode('utf-8').encode('gb2312') 编码成gb2312结果可以显示中文！
+
+OK。我又将我的内容也一起弄成GB2312
+content = content.encode('gb2312','ignore')
+print content                 也可以成功打印出来中文。
+
+我想这个时候应该没有什么问题了吧。结果一用正则又死掉了。昏死！！！！！！！
+
+换另外一个好的文件测试下看看：换了之后发现没死而且成功了！
+
+所以我觉得：肯定是这个文件里面的某些内容与正则匹配出现了冲突！导致的!
+
+继续跟踪：
+出现如下的情况
+myfile = codecs.open("01.htm","r","utf-8","ignore")             
+str = myfile.read()                              
+content = str.replace("\n"," ")
+print type(content)                               #发现是unicode码
+regex3 = 'class=wpcpsCSS>([^<]+)(?:.*?wpcppb_CSS> ([0-9]+) </span>)?.*?(?:.*?(已被关闭))?.*?([0-9]+)个回答.*?([0-9]+)次浏览.*?(?:<div class=wpcptfCSS>.*?user\?userid=([0-9]+).*?>(.*?)</a> </div>.*?)?(?:user\?userid=([0-9]+)")? class="wpfitCSS[^"]+">([^<]+).*?class=wpcptsCSS>([^<]+).*?([0-9.]{9,}\*).*?class=wpcpdCSS>(.*?)</div> <div class=wpcpfCSS>'
+content = content.encode('utf-8')
+p=re.compile(regex3)
+results = p.findall(content)
+
+没有什么问题可以成功出来结果。但是我
+将content = content.encode('gb2312') 的话就发现 死掉了！
+说明我的内容content与我的正则的编码其实是不一样的！
+我现在将我的正则也调成gb2312来测试。结果发现可以出来。而且我的结果
+results = p.findall(content)
+for ele in results:
+    print ele[0],ele[1],ele[2],ele[3],ele[4],ele[5],ele[6],ele[7],ele[8],ele[9],ele[10]
+在eclipse(默认为gb2312)下面也是没有问题的了！～
+
+所以我想：如果content是GBK那正则的内容也应当是GBK 即两者的编码一定要保持一致！否则就会出现死掉程序的情况！
+
+
+
+现在我这样来处理
+全部使用unicode编码处理
+
+myfile = codecs.open("right.html","r")   
+str = myfile.read()                                
+content = str.replace("\n"," ")
+content = content.decode('utf-8','ignore')     #使用utf-8解码出来
+都使用unicode编码吧
+现在正则也用
+regex3 = regex3.decode('utf-8','ignore') 使用utf-8搞成unicode编码
+
+OK现在再来测试！
+
+结论：
+解决正则出现中文的BUG结论：
+1、打开文件
+myfile = codecs.open("right.html","r")
+不需要设置其编码的！
+
+设置编码格式
+str = myfile.read()                             
+content = str.replace("\n"," ")
+content = content.decode('utf-8','ignore')   #使用utf-8解码成unicode格式
+
+正则：
+regex3 = regex3.decode('utf-8','ignore')    #正则也统一使用utf-8解码成unicode格式
+
+然后就可以
+p=re.compile(regex3)
+results = p.findall(content)
+调用正则了！

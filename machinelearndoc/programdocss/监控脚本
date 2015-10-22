@@ -1,0 +1,409 @@
+#!/bin/sh
+DBASE_DIR=`readlink -f $0 | xargs dirname`
+source /etc/profile
+pig=/home/pig/pig/bin/pig
+hadoop=/home/hadoop/hadoop/bin/hadoop
+hive=/home/hive/hive/bin/hive
+mysql=/usr/bin/mysql
+hama=/home/hadoop/hama/bin/hama
+pigut=/data/datamining/cron/util/pigut
+mrut=/data/datamining/cron/util/mrut
+pyut=/data/datamining/cron/util/pyut
+
+#!/bin/bash
+source /etc/profile
+##################系统环境变量#################################
+YESTERDAY=`date +%Y-%m-%d -d yesterday`
+THE_DAY_BEFORE_YESTERDAY=`date +%Y-%m-%d -d -2days`
+LAST_HOUR_DAY=`date +%Y-%m-%d -d -1hour`
+LAST_HOUR_HOUR=`date +%H -d -1hour`
+NOW_DAY=`date +%Y-%m-%d`
+NOW_HOUR=`date +%H`
+JAVA_HOME=/home/hadoop/java
+JAVA=$JAVA_HOME/bin/java
+SQOOP=/home/sqoop/sqoop/bin/sqoop
+KETTLE_SPOON=/home/kettle/data-integration
+deafaultforward=1
+parallel_2hadoop=yes
+DEFAULT_DAY=`date +%Y-%m-%d -d -${deafaultforward}hour`
+DEFAULT_HOUR=`date +%H -d -${deafaultforward}hour`
+DEFAULT_CLEARLOG_DAY=`date +%Y-%m-%d -d -2hour`
+DEFAULT_CLEARLOG_HOUR=`date +%H -d -2hour`
+PYTHON=/usr/bin/python
+ROOT_XJOB_LOG_DIR=/data/datamining/logs
+ROOT_XJOB_TMP_DIR=/data/datamining/tmp
+
+PIGTEMPOUT=/tmp
+#######################公共的jar包及依赖的jar路径################
+BASE_DIR_ROOT="`readlink -f $0 | xargs dirname | xargs dirname`"
+echo $BASE_DIR_ROOT
+UDF_PATH=$BASE_DIR_ROOT/public/build/udf.jar
+UDF_PATH_TEST=$BASE_DIR_ROOT/public/build/udflyt.jar
+THIRD_LIB=$BASE_DIR_ROOT/public/3rdlibs 
+MYSQL_JAR=$THIRD_LIB/mysqljdbc.jar
+PIGGY_BANK_JAR=$THIRD_LIB/piggybank.jar
+HIVE_WAREHOUSE=/warehouse
+SCRIBE_DIR=/basicdata/scribe
+SSHCP_DIR=/basicdata/sshcp
+KAFKA_DIR=/basicdata/kafka
+
+usage(){
+    echo -----------------用法----------------------
+    echo 往前推n小时/天：$0 -p n
+    echo 运行指定天：$0 -d day
+    echo 运行指定天的指定第n小时：$0 -d day -h n
+    echo -------------------------------------------
+    exit 0
+}
+
+#######捕捉参数###########
+getopt(){
+    while getopts "p:d:h:m:s:l:" optname;        
+       do
+         case "$optname" in
+         p)
+           p=$OPTARG
+           ;;
+         d)
+           day=$OPTARG
+           ;;
+         h)
+           h=$OPTARG
+           ;;
+         m)
+                 method=$OPTARG
+           ;;
+         s)
+          systime=$OPTARG
+          ;;
+         l)
+          prologdir=$OPTARG
+          ;;
+         *)
+           usage
+           ;;
+         esac
+         done
+        if [ -z "$method" ]; then
+        echo "必须指定方法"
+        exit 0
+        fi;
+}
+
+#####按日调用脚本方法##########
+dailyrun(){
+     getopt $@
+     if [ -n "$systime" ];then
+     ####根据传入的时间获取前一天的时间
+        day=`echo $systime|cut -c1-10`
+        newsystime="$day 00:00:00"
+        ms=`date -d "$newsystime" +%s`
+        beforems=`expr $ms - 86400`
+        newday=`date -d "@$beforems" "+%Y-%m-%d"`
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${newday}.log
+        mkdir -p $logdir
+        $method $newday >> $logdir/$logname 2>&1
+     exit 0
+     fi;
+     if [ -z "$p" ]&&[ -z "$day" ];then
+        day=$YESTERDAY
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${day}.log
+        mkdir -p $logdir
+        $method $day >> $logdir/$logname 2>&1
+        exit 0
+     fi;
+     if [ -n "$p" ];then
+     for((d=$p;d>=1;d--));
+     do
+        day=`date +%Y-%m-%d -d -${d}day`
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${day}.log
+        mkdir -p $logdir
+        $method $day >> $logdir/$logname 2>&1
+        done
+        exit 0
+     fi;
+if [[ $day =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] ; then
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${day}.log
+        mkdir -p $logdir
+        $method $day >> $logdir/$logname 2>&1
+        exit 0
+     fi;
+     usage
+}
+
+otherrun() {
+    getopt $@
+     if [ -n "$systime" ];then
+     ####根据传入的时间获取前一天的时间
+        day=`echo $systime|cut -c1-10`
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${day}.log
+        mkdir -p $logdir
+        $method $day >> $logdir/$logname 2>&1
+     exit 0
+     fi;
+     if [ -z "$p" ]&&[ -z "$day" ];then
+        day=$YESTERDAY
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${day}.log
+        mkdir -p $logdir
+        $method $day >> $logdir/$logname 2>&1
+        exit 0
+     fi;
+     if [ -n "$p" ];then
+     for((d=$p;d>=1;d--));
+     do
+        day=`date +%Y-%m-%d -d -${d}day`
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${day}.log
+        mkdir -p $logdir
+        $method $day >> $logdir/$logname 2>&1
+        done
+        exit 0
+     fi;
+     if [[ $day =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] ; then
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${day}.log
+        mkdir -p $logdir
+        $method $day >> $logdir/$logname 2>&1
+done
+        exit 0
+     fi;
+     if [[ $day =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] ; then
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${day}.log
+        mkdir -p $logdir
+        $method $day >> $logdir/$logname 2>&1
+        exit 0
+     fi;
+     usage
+}
+
+
+#####按小时调用脚本方法##########
+hourlyrun(){
+     getopt $@
+     if [ -n "$systime" ];then
+     ##根据传入的时间获取上个小时的时间
+        day=`echo $systime|cut -c1-10`
+        h=`echo $systime|cut -c12-13`
+        newsystime="$day $h:00:00"
+        ms=`date -d "$newsystime" +%s`
+        beforems=`expr $ms - 3600`
+        newday=`date -d "@$beforems" "+%Y-%m-%d"`
+        newh=`date -d "@$beforems" "+%H"`
+
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${newday}.log
+        mkdir -p $logdir
+        $method $newday $newh >> $logdir/$logname 2>&1
+        exit 0
+     fi;
+     if [ -z "$p" ]&&[ -z "$h" ];then
+              day=$DEFAULT_DAY
+              h=$DEFAULT_HOUR
+
+        logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${day}.log
+        mkdir -p $logdir
+
+              $method $day $h >> $logdir/$logname 2>&1
+              exit 0
+     fi;
+     if [ -n "$p" ];then
+         for((d=$p;d>=1;d--));
+         do
+                   day=`date +%Y-%m-%d -d -${d}hour`
+h=`date +%H -d -${d}hour`
+
+             logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+             logname=${day}.log
+             mkdir -p $logdir
+
+                   $method $day $h >> $logdir/$logname 2>&1
+     done
+     exit 0
+     fi;
+     if [[ $day =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]&&[[ $h =~ ^[0-9]{1,2}$ ]] ; then
+      logdir=$ROOT_XJOB_LOG_DIR/$prologdir
+        logname=${day}.log
+        mkdir -p $logdir
+              $method $day `printf "%02d" $h`  >> $logdir/$logname 2>&1
+          exit 0
+     fi;
+     usage
+}
+
+
+########判断返回值方法##################
+CHK(){
+    ###1代表返回值   2为job类型  3为错误信息 
+    returnCode=$1
+    JOB_TYPE=$2
+    EMAILERS=$3
+    errorMessage=$4  
+    if [[ $returnCode -ne 0 ]];then
+        LOG_ERR $JOB_TYPE $errorMessage
+        # send email
+        title="${JOB_TYPE}_error"
+        DBASE_DIR="/home/datamining/cron/public"
+        message=`$DBASE_DIR/decode2url.py $errorMessage`
+        message="${message// /_}"
+        curl "http://10.100.2.16:18888/sendmail?to=$EMAILERS&subject=$title&html=$message"
+        exit -1;
+    fi;
+}
+
+########判断文件是否为空方法##################
+checkNull(){
+    file=$1
+    JOB_TYPE=$2
+    EMAILERS=$3
+    
+    lineNum=`cat $1 |wc -l`
+    if [[ $lineNum -eq 0 ]];then
+        errorInfo=$JOB_TYPE_"file:"$file"_is_null"
+        LOG_ERR $JOB_TYPE $errorInfo
+        
+        # send email
+        title="${JOB_TYPE}_error"
+        
+        curl "http://10.100.2.16:18888/sendmail?to=$EMAILERS&subject=$title&html=$errorInfo"
+        exit -1;
+    fi;
+}
+
+#######日志信息################
+LOG_INFO(){
+    JOB_TYPE=$1
+    msg=$2
+    infoTime=`date +"%Y-%m-%d %H:%M:%S"`
+    echo "SCHED_JOB=[INFO] $infoTime ${JOB_TYPE} $msg"
+}
+
+#######日志错误信息#############
+LOG_ERR() {
+    JOB_TYPE=$1
+    msg=$2
+    errorTime=`date +"%Y-%m-%d %H:%M:%S"`
+    echo "SCHED_JOB=[ERROR] $errorTime ${JOB_TYPE} $msg"    
+}
+
+JOB_END() {
+  echo SCHED_JOB=end time : `date +%Y-%m-%d_%H:%M:%S`
+}
+
+
+
+
+
+#!/bin/sh
+   2 BASE_DIR=`readlink -f $0 | xargs dirname`
+   3 source /home/datamining/cron/public/global.sh
+
+
+
+1. git工程名:prometheus(普罗米修斯,最有智慧的神之一，被称为“先知者”。人类的创造者和保护者。)
+2. 在158开发机上clone工程
+  $ git clone git@192.168.6.91:prometheus.git
+2. 添加线上推送git库
+  $ git remote add online ssh://git@10.100.2.13:33312/prometheus.git
+3. 更新一下线上库
+  $ git pull online master
+4. 正常添加及修改开发
+5. 测试通过后推送工程
+  $ make push  #自动推送到git@192.168.6.91:prometheus.git和ssh://10.100.2.13:33312/prometheus.git
+6. 线上部署或更新
+  $ su - datamining;cd cron
+  $ make update # 更新工程
+7. 添加对应crontab设置
+PS:第一次使用将自已本地机子上的id_rsa.pub发给Me
+
+
+
+
+
+
+#!/bin/bash
+   2 #-------------------------------------------------------------------------------
+   3 # Filename: dw_v6_download.sh
+   4 # Revision: 版本1.0
+   5 # Date: 2014-10-29
+   6 # Author: 李友廷
+   7 # Email: liyouting@zhangyue.com
+   8 # Website: www.zhangyue.com
+   9 # JOB_TYPE: 日报
+  10 # Executor: dap
+  11 # Description: dw层下载数据汇总
+  12 #-------------------------------------------------------------------------------
+  13 BASE_DIR_LOCAL="`readlink -f $0 | xargs dirname | xargs dirname| xargs dirname`"
+  14 source  $BASE_DIR_LOCAL/global/bin/global.sh
+  15 
+  16 dataroot=$DOWNLOAD_LOG_V6
+  17 uc_down_recharge=$HIVE_WAREHOUSE/uc_down_recharge   # /warehouse/uc_down_recharge/ds=20130924
+  18 outdataroot=$PRIVATE_PIGTEMPOUT/dw_v6_download/out
+  19 SCRIBE_DIR=$SCRIBE_DIR
+  20 
+  21 dwdownload(){
+  22   dt=$1
+  23   hour=$2
+  24   today=$dt
+  25 
+  26   ystday=`date -d "$dt -1days" +%Y-%m-%d`
+  27   logfile=$dataroot/${dt//-/}/$hour
+  28   
+  29   # 第一步：查看前一小时数据是否存在
+  30   LOG_INFO $JOB_TYPE "$HADOOP fs -ls $logfile"
+  31   $HADOOP fs -ls $logfile
+  32   checkError $? $JOB_TYPE "$HADOOP fs -ls $logfile error!"
+  33 
+  34   # 第二步：跑pig数据
+  35   OUTDIR=$outdataroot/$dt/$hour
+  36   $PIG -p fn=$logfile -p today=$today -p hour=$hour -p ystday=$ystday -p uc_down_recharge_dir=$uc_down_recharge  \
+  37        -p ip_province=$IP_PROVINCE -p udfjar=$UDF_PATH -p out=$OUTDIR $PIG_DIR/dw_v6_download.pig 
+  38   checkError $? $JOB_TYPE "$PIG -p fn=$logfile -p today=$today -p hour=$hour -p ystday=$ystday -p uc_down_recharge_dir=$uc_down_recharge -p ip_province=$IP_PROVINCE -p udfjar=$UDF_PATH -p out=$OUTDIR $PIG_DIR/dw_v6_download.pig error!"
+  39   
+  40   # 第三步：导入到hive表
+  41   LOG_INFO $JOB_TYPE "load data to  dw_v6_download PARTITION(ds='$dt',hour='$hour')"
+  42   SQL_CMD="LOAD DATA INPATH '$OUTDIR/part-*' OVERWRITE INTO TABLE dw_v6_download PARTITION(ds='$dt',hour='$hour')"
+  43   $HIVE -S -e "$SQL_CMD"
+  44   checkError $? $JOB_TYPE "$HIVE -S -e $SQL_CMD error!"  
+  45 
+  46   JOB_END
+  47 }
+  48 
+  49 hourlyrun $@ -mdwdownload -l"v6/dw_v6_download"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
